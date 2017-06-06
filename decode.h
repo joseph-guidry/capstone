@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-
 struct filepcap {
-	uint32_t fileTypeID;				//*File Type ID
+	uint32_t fileTypeID;			//*File Type ID
 	uint16_t majorVersion;			//*Major Version
 	uint16_t minorVersion;			//*Minor Version
 	uint32_t gmtOffset;				//GMT Offset (Hours before/after GMT timezone)
@@ -47,10 +46,11 @@ struct udpHeader {
 
 struct zergHeader {
 	uint32_t ver_type_totalLen;					//Psychic Format version = 1
-	uint16_t destID;
 	uint16_t sourceID;
+	uint16_t destID;
 	uint32_t seqID;
 };
+
 struct zergPacket {
 	struct filepcap fileHeader;				//pcap File Header structure
 	struct headerpcap packetHeader;  		//pcap Packet Header structure
@@ -60,5 +60,44 @@ struct zergPacket {
 	struct zergHeader pcapZerg;				//custom Zerg Packet Header
 };
 
+struct msgPayload {
+	char * message;
+};
+
+struct statusPayload {
+	int32_t hitPoints;
+	//uint8_t armorValue;
+	uint32_t maxHitPoints;
+	//uint8_t zergType;
+	uint32_t speed;
+	char * zergName;
+	
+};
+
+struct commandPayload {
+	;
+};
+
+//struct gpsDataPayload {
+
+/*
+union gps {
+	double gpsCoord;
+	struct makeDouble {
+			uint64_t sign:1;
+			uint64_t exponent:11;
+			uint64_t mantissa:52;
+		};
+	};
+
+struct gpsDataPayload {
+	union gps;
+	union gps; {
+	uint32_t altitude;
+	uint32_t bearing;
+	uint32_t speed;
+	uint32_t accuracy;
+};
+*/
 //Analyze the standard headers to determine the type of payload structure that will display the data
 
