@@ -7,14 +7,15 @@
 #include "decode.h"
 
 
-FILE * buildPcapData (struct zergPacket * pcap, char * filename);
+FILE * buildPcapData (struct zergPacket * pcap, char * filename, int * filesize);
+FILE * buildPacketData( struct zergPacket * pcapfile, FILE *fp ); 
 FILE * printMsgPayload (struct zergPacket * pcap, FILE *fp);
 FILE * printStatusPayload (struct zergPacket * pcaps, FILE *fp);
 FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp);
+FILE * printCmdPayload (struct zergPacket * pcapfile, FILE *fp);
 void getZergType(char * test, int x);
 double convertBin32toDecimal (unsigned int speed);
 double convertBin64toDecimal (unsigned long speed);
-
 uint64_t swapLong( uint64_t x);
 
 
@@ -22,79 +23,134 @@ int main (int argc, char **argv)
 {
 	FILE *fp;
 	struct zergPacket pcapfile;
-	int msgType;
+	int msgType, filesize;
 	char filename[25];
 	strcpy(filename, argv[1]);
 	
 	//Fill pcap structure with individual header structures.
-	fp = buildPcapData(&pcapfile, filename);
+	fp = buildPcapData(&pcapfile, filename, &filesize);
 	
-	printf("The current position of the file: %lu\n", ftell(fp));
+	while(ftell(fp) < filesize)
+	{
+		fp = buildPacketData(&pcapfile, fp);
+		printf("The current position of the file: %lu\n", ftell(fp));
+	
 #ifdef DEBUG
-	printf("fileTypeID: %x \n", htonl(pcapfile.fileHeader.fileTypeID));
-	printf("majorVersion: %x \n", htons(pcapfile.fileHeader.majorVersion));
-	printf("minorVersion: %x \n", htons(pcapfile.fileHeader.minorVersion));
-	printf("linkLayerType: %x \n", htons(pcapfile.fileHeader.linkLayerType));
+		printf("fileTypeID: %x \n", htonl(pcapfile.fileHeader.fileTypeID));
+		printf("majorVersion: %x \n", htons(pcapfile.fileHeader.majorVersion));
+		printf("minorVersion: %x \n", htons(pcapfile.fileHeader.minorVersion));
+		printf("linkLayerType: %x \n", htons(pcapfile.fileHeader.linkLayerType));
 	
-	printf("dataCapture: %d \n", pcapfile.packetHeader.dataCapture);
+		printf("dataCapture: %d \n", pcapfile.packetHeader.dataCapture);
 	
-	printf("Ether Type:%04x \n", htons(pcapfile.pcapFrame.etherType));
+		printf("Ether Type:%04x \n", htons(pcapfile.pcapFrame.etherType));
 	
-	printf("IP Version: [%x]\n", htons(pcapfile.pcapIpv4.ver_header) >> 12);
-	printf("totalIPhdrlen: [%04x]\n", htons(pcapfile.pcapIpv4.totalIPhdrlen));
+		printf("IP Version: [%x]\n", htons(pcapfile.pcapIpv4.ver_header) >> 12);
+		printf("totalIPhdrlen: [%04x]\n", htons(pcapfile.pcapIpv4.totalIPhdrlen));
 	
-	printf("Source Port: %u \n", htons(pcapfile.pcapUdp.sport));
-	printf("Dest Port: %u \n", htons(pcapfile.pcapUdp.dport));
-	printf("Length: %u \n", htons(pcapfile.pcapUdp.udpLen));
+		printf("Source Port: %u \n", htons(pcapfile.pcapUdp.sport));
+		printf("Dest Port: %u \n", htons(pcapfile.pcapUdp.dport));
+		printf("Length: %u \n", htons(pcapfile.pcapUdp.udpLen));
 	
-	printf("Zerg Version: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 28);
-	printf("Zerg Type: %x \n", (htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
-	printf("Zerg total Length: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) & 0xffffff);
-	printf("Zerg dest ID: %d \n", htons(pcapfile.pcapZerg.destID));
-	printf("Zerg src ID: %d \n", htons(pcapfile.pcapZerg.sourceID));
-	printf("Zerg SEQ ID: %d \n", htonl(pcapfile.pcapZerg.seqID));
+		printf("Zerg Version: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 28);
+		printf("Zerg Type: %x \n", (htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
+		printf("Zerg total Length: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) & 0xffffff);
+		printf("Zerg dest ID: %d \n", htons(pcapfile.pcapZerg.destID));
+		printf("Zerg src ID: %d \n", htons(pcapfile.pcapZerg.sourceID));
 #endif	
 	
+		printf("Zerg SEQ ID: %d \n", htonl(pcapfile.pcapZerg.seqID));
+	
+		printf("The current position of the file: %lu\n", ftell(fp));
+	
+		msgType = ((htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
+		printf("msgType: %d\n", msgType);
+		switch (msgType)
+		{
+			case 0:
+				printf("This is a msg payload\n");
+				fp = printMsgPayload(&pcapfile, fp);
+				printf("The current position of the file: %lu\n", ftell(fp));
+				break;
+			case 1:
+				printf("This is a status payload\n");
+				fp = printStatusPayload(&pcapfile, fp);
+				printf("The current position of the file: %lu\n", ftell(fp));
+				break;
+			case 2:
+				printf("This is a command payload\n");
+				fp = printCmdPayload(&pcapfile, fp);
+				printf("The current position of the file: %lu\n", ftell(fp));
+				break;
+			case 3:
+				printf("This is a gps status payload\n");
+				fp = printGpsPayload(&pcapfile, fp);
+				printf("The current position of the file: %lu\n", ftell(fp));
+				break;
+			default:
+				printf("Unknown payload type\n");
+				break;
+		}	
+	}
 	printf("The current position of the file: %lu\n", ftell(fp));
-	
-	msgType = ((htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
-	printf("msgType: %d\n", msgType);
-	switch (msgType)
-	{
-		case 0:
-			printf("This is a msg payload\n");
-			fp = printMsgPayload(&pcapfile, fp);
-			printf("The current position of the file: %lu\n", ftell(fp));
-			fclose(fp);
-			break;
-		case 1:
-			printf("This is a status payload\n");
-			fp = printStatusPayload(&pcapfile, fp);
-			printf("The current position of the file: %lu\n", ftell(fp));
-			fclose(fp);
-			break;
-		case 2:
-			printf("This is a command payload\n");
-			
-			printf("The current position of the file: %lu\n", ftell(fp));
-			break;
-		case 3:
-			printf("This is a gps status payload\n");
-			fp = printGpsPayload(&pcapfile, fp);
-			printf("The current position of the file: %lu\n", ftell(fp));
-			break;
-		default:
-			printf("Unknown payload type\n");
-			break;
-	}	
-	
-	
-	//printf("The current position of the file: %lu\n", ftell(fp));
-	//fclose(fp);
+	fclose(fp);
 	
 
 	return 0;
 }
+
+FILE * printCmdPayload (struct zergPacket * pcapfile, FILE *fp)
+{
+	struct commandPayload pcap;
+	unsigned int param1, param2;
+	int command, n;
+	
+	n = fread(&pcap, 1, 8, fp);
+	printf("Size of header: %u \n", n);
+	
+	printf("Command: %x \n", pcap.command);
+	printf("Command: %x \n", pcap.parameter1);
+	printf("Command: %x \n", pcap.parameter2);
+	
+	command = htons(pcap.command);
+	param1 = htons(pcap.parameter1);
+	param2 = htonl(pcap.parameter2);
+	
+	switch (command) 
+	{
+		case 0:
+			printf("GET_STATUS command\n");
+			break;
+		case 1:
+			printf("GO_TO command\n");
+			printf("Parameter 2: %f \n", convertBin32toDecimal(param2));
+			printf("Parameter 1: %d \n", param1);
+			break;
+		case 2:
+			printf("GET_GPS command\n");
+			break;
+		case 3:
+			printf("RESERVED command\n");
+			break;
+		case 4:
+			printf("RETURN command\n");
+			break;
+		case 5:
+			printf("SET_GROUP command\n");
+			break;
+		case 6:
+			printf("STOP command\n");
+			break;
+		case 7:
+			printf("REPEAT command\n");
+			break;
+		default:
+			printf("Unknown command\n");
+			break;
+	}
+	return fp;
+}
+
 
 uint64_t swapLong( uint64_t x)
 {
@@ -112,7 +168,6 @@ double convertBin64toDecimal(unsigned long coordinates)
 	exponent = ((coordinates >> 52) & 0x7ff) - 1023;
 	
 	//printf("Mantissa %lx\nExponent: %x\n", mantissa, exponent);
-	
 	return 1 * pow(2, exponent) * (1 +(mantissa * pow(2, -52))) ;
 } 
 
@@ -154,7 +209,6 @@ FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp)
 	
 	return fp;
 }
-
 
 FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 {
@@ -202,7 +256,6 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	printf("Zerg Type in Status Payload: %x \n", htonl(pcap.maxHitPoints) & 0xff);
 	printf("Zerg name : %s \n", pcap.zergName);
 	printf("Zerg Type : %s \n" ,zergType);
-	
 	
 	//Convert SPEED from binary to Decimal 
 	zergSpeed = convertBin32toDecimal(htonl(pcap.speed));
@@ -266,7 +319,6 @@ void getZergType(char * test, int x)
 		default:
 			printf("Unknown Type\n");
 			break;
-		
 	}
 }
 
@@ -301,18 +353,12 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 	return fp;
 }
 
-
-FILE * buildPcapData(struct zergPacket * pcap, char *filename)
+FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 {
 	FILE *fp;
 	unsigned long n;
 	
 	struct filepcap filetest;
-	struct headerpcap headertest;
-	struct etherFrame ethertest;
-	struct ipv4Header iptest;
-	struct udpHeader udptest;
-	struct zergHeader zergtest;	
 	
 	fp = fopen(filename, "rb");
 	if (fp == NULL)
@@ -322,15 +368,34 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename)
 	
 	printf("Opened the FILE!\n");
 	
+	//GET FILESIZE
+	fseek(fp, 0, 2);
+	*filesize = ftell(fp);
+	printf("Filesize: %d \n", *filesize);
+	fseek(fp, 0, 0);
+	
+	
 	n = fread(&filetest, 1, sizeof(struct filepcap),  fp);
-	//printf("Size of file: %lu \n", n);
+	printf("Size of file: %lu \n", n);
 	pcap->fileHeader = filetest;
+	
+	return fp;
+}
+
+FILE * buildPacketData( struct zergPacket * pcap, FILE *fp )
+{
+	unsigned long n;
+	struct headerpcap headertest;
+	struct etherFrame ethertest;
+	struct ipv4Header iptest;
+	struct udpHeader udptest;
+	struct zergHeader zergtest;
 	
 	n = fread(&headertest, 1, sizeof(struct headerpcap),  fp);
 	//printf("Size of file: %lu \n", n);
 
 	pcap->packetHeader = headertest;
-
+	
 	n = fread(&ethertest, 1, sizeof(struct etherFrame),  fp);
 	//printf("Size of file: %lu \n", n);
 	pcap->pcapFrame = ethertest;
@@ -351,5 +416,4 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename)
 	pcap->pcapZerg = zergtest;
 
 	return fp;
-	
 }

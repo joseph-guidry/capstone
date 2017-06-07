@@ -72,11 +72,13 @@ struct statusPayload {
 	
 };
 
-/*
+
 struct commandPayload {
-	;
+	uint16_t command;
+	uint16_t parameter1;
+	uint32_t parameter2;
 };
-*/
+
 
 struct gpsDataPayload {
 	uint64_t longitude;
@@ -96,15 +98,6 @@ union gps {
 			uint64_t mantissa:52;
 		};
 	};
-
-struct gpsDataPayload {
-	union gps;
-	union gps; {
-	uint32_t altitude;
-	uint32_t bearing;
-	uint32_t speed;
-	uint32_t accuracy;
-};
 */
 //Analyze the standard headers to determine the type of payload structure that will display the data
 
