@@ -66,19 +66,26 @@ struct msgPayload {
 
 struct statusPayload {
 	int32_t hitPoints;
-	//uint8_t armorValue;
 	uint32_t maxHitPoints;
-	//uint8_t zergType;
 	uint32_t speed;
 	char * zergName;
 	
 };
 
+/*
 struct commandPayload {
 	;
 };
+*/
 
-//struct gpsDataPayload {
+struct gpsDataPayload {
+	uint64_t longitude;
+	uint64_t latitude;
+	uint32_t altitude;
+	uint32_t bearing;
+	uint32_t speed;
+	uint32_t accuracy;
+};
 
 /*
 union gps {

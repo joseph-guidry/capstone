@@ -3,14 +3,19 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <math.h>
+#include <inttypes.h>
 #include "decode.h"
 
 
 FILE * buildPcapData (struct zergPacket * pcap, char * filename);
 FILE * printMsgPayload (struct zergPacket * pcap, FILE *fp);
 FILE * printStatusPayload (struct zergPacket * pcaps, FILE *fp);
+FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp);
 void getZergType(char * test, int x);
-double convertBintoDecimal(unsigned int speed);
+double convertBin32toDecimal (unsigned int speed);
+double convertBin64toDecimal (unsigned long speed);
+
+uint64_t swapLong( uint64_t x);
 
 
 int main (int argc, char **argv)
@@ -25,7 +30,7 @@ int main (int argc, char **argv)
 	fp = buildPcapData(&pcapfile, filename);
 	
 	printf("The current position of the file: %lu\n", ftell(fp));
-	
+#ifdef DEBUG
 	printf("fileTypeID: %x \n", htonl(pcapfile.fileHeader.fileTypeID));
 	printf("majorVersion: %x \n", htons(pcapfile.fileHeader.majorVersion));
 	printf("minorVersion: %x \n", htons(pcapfile.fileHeader.minorVersion));
@@ -48,7 +53,7 @@ int main (int argc, char **argv)
 	printf("Zerg dest ID: %d \n", htons(pcapfile.pcapZerg.destID));
 	printf("Zerg src ID: %d \n", htons(pcapfile.pcapZerg.sourceID));
 	printf("Zerg SEQ ID: %d \n", htonl(pcapfile.pcapZerg.seqID));
-	
+#endif	
 	
 	printf("The current position of the file: %lu\n", ftell(fp));
 	
@@ -59,16 +64,24 @@ int main (int argc, char **argv)
 		case 0:
 			printf("This is a msg payload\n");
 			fp = printMsgPayload(&pcapfile, fp);
+			printf("The current position of the file: %lu\n", ftell(fp));
+			fclose(fp);
 			break;
 		case 1:
 			printf("This is a status payload\n");
 			fp = printStatusPayload(&pcapfile, fp);
+			printf("The current position of the file: %lu\n", ftell(fp));
+			fclose(fp);
 			break;
 		case 2:
 			printf("This is a command payload\n");
+			
+			printf("The current position of the file: %lu\n", ftell(fp));
 			break;
 		case 3:
 			printf("This is a gps status payload\n");
+			fp = printGpsPayload(&pcapfile, fp);
+			printf("The current position of the file: %lu\n", ftell(fp));
 			break;
 		default:
 			printf("Unknown payload type\n");
@@ -76,25 +89,87 @@ int main (int argc, char **argv)
 	}	
 	
 	
-	printf("The current position of the file: %lu\n", ftell(fp));
-	fclose(fp);
+	//printf("The current position of the file: %lu\n", ftell(fp));
+	//fclose(fp);
 	
 
 	return 0;
 }
+
+uint64_t swapLong( uint64_t x)
+{
+	x = ((x << 8 ) & 0xFF00FF00FF00FF00ULL)  | ((x >> 8)  &  0x00FF00FF00FF00FFULL);
+	x = ((x << 16 ) &  0xFFFF0000FFFF0000ULL) | ((x >> 16) &  0x0000FFFF0000FFFFULL);
+	
+	return (x << 32) | (x >> 32);
+}
+
+double convertBin64toDecimal(unsigned long coordinates)
+{
+	long mantissa;
+	int exponent;
+	mantissa = coordinates & 0xfffffffffffff;
+	exponent = ((coordinates >> 52) & 0x7ff) - 1023;
+	
+	//printf("Mantissa %lx\nExponent: %x\n", mantissa, exponent);
+	
+	return 1 * pow(2, exponent) * (1 +(mantissa * pow(2, -52))) ;
+} 
+
+double convertBin32toDecimal(unsigned int speed)
+{
+	int mantissa, exponent, signedBit;
+	
+	mantissa = speed & 0x7fffff;
+	exponent = ((speed >> 23) & 0xff) - 127;
+	signedBit = speed >> 31;
+	
+	//printf("Mantissa %d\nExponent: %d\nSigned BIt: %d \n", mantissa, exponent, signedBit);
+	return (signedBit? -1: 1) * pow(2, exponent) * (1 +(mantissa * pow(2, -23))) ;
+}
+
+FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp)
+{
+	printf("Inside GPS Payload\n");
+	struct gpsDataPayload pcap;
+	int n, direction;
+	uint64_t longitude, latitude; 
+	n = fread(&pcap, 1, 32, fp);
+	printf("Size of header: %u \n", n);
+	
+	latitude = swapLong(pcap.latitude);
+	direction = ( latitude & 0x8000000000000000);
+	longitude = swapLong(pcap.latitude);
+	printf("Latitude:  %.9f deg. %c\n", convertBin64toDecimal(latitude), direction ? 'S':'N');
+	
+	direction = ( longitude & 0x8000000000000000);
+	longitude = swapLong(pcap.longitude);
+	printf("Longitude: %.9f deg. %c\n", convertBin64toDecimal(longitude), direction ? 'E':'W');
+	
+	printf("Altitude:  %.1f \n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
+	printf("Bearing:   %.9f deg.\n", convertBin32toDecimal(htonl(pcap.bearing)));
+	printf("Speed:     %d km/h\n", (int)((convertBin32toDecimal(htonl(pcap.speed))) * 3.6));
+	printf("Accuracy:  %d m\n", (int) convertBin32toDecimal(htonl(pcap.accuracy)));
+					
+	
+	return fp;
+}
+
 
 FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 {
 	printf("Inside Status Payload\n");
 	struct statusPayload pcap;
 	int n, c, msgLength;
-	//uint32_t speed;
 	double zergSpeed;
 
 	char zergType[15];
 	
 	printf("The current position of the file: %lu\n", ftell(fp));
-	n = fread(&pcap, 1, 12, fp);
+	
+	// Position prior to reading status payload header.
+	// 12 = number of bytes in payload header before char array.
+	n = fread(&pcap, 1, 12, fp);  
 	printf("Size of header: %u \n", n);
 	printf("The current position of the file: %lu\n", ftell(fp));
 	
@@ -130,31 +205,10 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	
 	
 	//Convert SPEED from binary to Decimal 
-	zergSpeed = convertBintoDecimal(htonl(pcap.speed));
-	//printf("%x m/s\n", speed);
+	zergSpeed = convertBin32toDecimal(htonl(pcap.speed));
 	
-	/*
-	mantissa = speed & 0x7fffff;
-	exponent = ((speed >> 23) & 0xff) - 127;
-	signedBit = speed >> 31;
-	
-	printf("Mantissa %d\nExponent: %d\nSigned BIt: %d \n", mantissa, exponent, signedBit);
-	zergSpeed = (signedBit? -1: 1) * pow(2, exponent) * (1 +(mantissa * pow(2, -23))) ;
-	*/
 	printf("Zerg Speed: %.4f m/s\n", zergSpeed);
 	return fp; 
-}
-
-double convertBintoDecimal(unsigned int speed)
-{
-	int mantissa, exponent, signedBit;
-	
-	mantissa = speed & 0x7fffff;
-	exponent = ((speed >> 23) & 0xff) - 127;
-	signedBit = speed >> 31;
-	
-	printf("Mantissa %d\nExponent: %d\nSigned BIt: %d \n", mantissa, exponent, signedBit);
-	return (signedBit? -1: 1) * pow(2, exponent) * (1 +(mantissa * pow(2, -23))) ;
 }
 
 void getZergType(char * test, int x)
@@ -269,25 +323,25 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename)
 	printf("Opened the FILE!\n");
 	
 	n = fread(&filetest, 1, sizeof(struct filepcap),  fp);
-	printf("Size of file: %lu \n", n);
+	//printf("Size of file: %lu \n", n);
 	pcap->fileHeader = filetest;
 	
 	n = fread(&headertest, 1, sizeof(struct headerpcap),  fp);
-	printf("Size of file: %lu \n", n);
+	//printf("Size of file: %lu \n", n);
 
 	pcap->packetHeader = headertest;
 
 	n = fread(&ethertest, 1, sizeof(struct etherFrame),  fp);
-	printf("Size of file: %lu \n", n);
+	//printf("Size of file: %lu \n", n);
 	pcap->pcapFrame = ethertest;
 
 	n = fread(&iptest, 1, sizeof(struct ipv4Header),  fp);
-	printf("Size of file: %lu \n", n);
+	//printf("Size of file: %lu \n", n);
 
 	pcap->pcapIpv4 = iptest;
 
 	n = fread(&udptest, 1, sizeof(struct udpHeader),  fp);
-	printf("Size of file: %lu \n", n);
+	//printf("Size of file: %lu \n", n);
 	
 	pcap->pcapUdp = udptest;
 	
