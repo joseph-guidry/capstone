@@ -14,7 +14,7 @@ struct headerpcap {
 	uint32_t unixEpoch;				//UNIX Epoch -> start time of UNIX
 	uint32_t microsec;				//microsecs from Epoch
 	uint32_t dataCapture;			//Length of Caputured Data
-	uint32_t linkLayerType;			//Truncated packet length
+	uint16_t trunPacketLen;			//Truncated packet length
 };
 
 struct etherFrame {
@@ -24,13 +24,11 @@ struct etherFrame {
 };
 	
 struct ipv4Header {
-	uint8_t ver_header;
-	uint8_t dscp_ecn;
+	uint16_t ver_header;
 	uint16_t totalIPhdrlen;
 	uint16_t identification;
 	uint16_t flags_frags;
-	uint8_t ttl;
-	uint8_t nextProtocol;
+	uint16_t nextProtocol;
 	uint16_t ipChecksum;
 	uint32_t srcAddroct1;				//Source IP Address
 	uint32_t srcAddroct2;
