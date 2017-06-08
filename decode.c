@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include <math.h>
 #include <inttypes.h>
-#include "decode.h"
+#include "codec.h"
 
 
 FILE * buildPcapData (struct zergPacket * pcap, char * filename, int * filesize);
@@ -17,6 +17,7 @@ void getZergType(char * test, int x);
 double convertBin32toDecimal (unsigned int speed);
 double convertBin64toDecimal (unsigned long speed);
 uint64_t swapLong( uint64_t x);
+void degreesConvertDMS( double degrees);
 
 
 int main (int argc, char **argv)
@@ -59,7 +60,7 @@ int main (int argc, char **argv)
 		printf("Zerg src ID: %d \n", htons(pcapfile.pcapZerg.sourceID));
 #endif	
 	
-		printf("Zerg SEQ ID: %d \n", htonl(pcapfile.pcapZerg.seqID));
+		printf("Zerg SEQ ID: %u \n", htonl(pcapfile.pcapZerg.seqID));
 	
 		printf("The current position of the file: %lu\n", ftell(fp));
 	
@@ -187,6 +188,7 @@ FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp)
 {
 	printf("Inside GPS Payload\n");
 	struct gpsDataPayload pcap;
+	double f_longitude;
 	int n, direction;
 	uint64_t longitude, latitude; 
 	n = fread(&pcap, 1, 32, fp);
@@ -199,15 +201,31 @@ FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp)
 	
 	direction = ( longitude & 0x8000000000000000);
 	longitude = swapLong(pcap.longitude);
-	printf("Longitude: %.9f deg. %c\n", convertBin64toDecimal(longitude), direction ? 'E':'W');
+	f_longitude = convertBin64toDecimal(longitude);
+	printf("Longitude: %.9f deg. %c\n", f_longitude, direction ? 'W':'E');
+	degreesConvertDMS(f_longitude);
 	
-	printf("Altitude:  %.1f \n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
+	printf("Altitude:  %.1f m\n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
 	printf("Bearing:   %.9f deg.\n", convertBin32toDecimal(htonl(pcap.bearing)));
 	printf("Speed:     %d km/h\n", (int)((convertBin32toDecimal(htonl(pcap.speed))) * 3.6));
 	printf("Accuracy:  %d m\n", (int) convertBin32toDecimal(htonl(pcap.accuracy)));
 					
 	
 	return fp;
+}
+
+void degreesConvertDMS( double degrees)
+{
+	uint8_t deg, min, sec;
+	
+	deg = degrees;
+	printf("Latitude: %d deg. ", deg);
+	
+	min = ((degrees - deg) * 60);
+	printf("%d' ", min);
+		
+	sec = ((degrees - deg - ((float)min/60)) * 3600);
+	printf("%d\"\n", sec);
 }
 
 FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
