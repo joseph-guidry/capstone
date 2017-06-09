@@ -49,15 +49,6 @@ struct zergHeader {
 	uint32_t seqID;
 };
 
-struct zergPacket {
-	struct filepcap fileHeader;				//pcap File Header structure
-	struct headerpcap packetHeader;  		//pcap Packet Header structure
-	struct etherFrame pcapFrame;			//pcap Ethernet Frame
-	struct ipv4Header pcapIpv4;				//pcap IPv4 header
-	struct udpHeader  pcapUdp;				//pcap UDP header
-	struct zergHeader pcapZerg;				//custom Zerg Packet Header
-};
-
 struct msgPayload {
 	char * message;
 };
@@ -67,7 +58,6 @@ struct statusPayload {
 	uint32_t maxHitPoints;
 	uint32_t speed;
 	char * zergName;
-	
 };
 
 struct commandPayload {
@@ -85,15 +75,21 @@ struct gpsDataPayload {
 	uint32_t accuracy;
 };
 
-/*
-union gps {
-	double gpsCoord;
-	struct makeDouble {
-			uint64_t sign:1;
-			uint64_t exponent:11;
-			uint64_t mantissa:52;
-		};
-	};
-*/
+typedef union {
+	struct msgPayload data;
+	struct statusPayload status;
+	struct commandPayload command;
+	struct gpsDataPayload gps;
+} payload;
+
+struct zergPacket {
+	struct filepcap fileHeader;				//pcap File Header structure
+	struct headerpcap packetHeader;  		//pcap Packet Header structure
+	struct etherFrame pcapFrame;			//pcap Ethernet Frame
+	struct ipv4Header pcapIpv4;				//pcap IPv4 header
+	struct udpHeader  pcapUdp;				//pcap UDP header
+	struct zergHeader pcapZerg;				//custom Zerg Packet Header
+	payload output;
+};
 //Analyze the standard headers to determine the type of payload structure that will display the data
 
