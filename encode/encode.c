@@ -9,6 +9,7 @@
 void fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 int getTypeNum(char * name);
+uint32_t convertToBinary(int number, float decimal);
 
 void buildPcapData (struct zergPacket * pcap);
 void buildPcapPacket (struct zergPacket * pcap);
@@ -136,7 +137,11 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	struct statusPayload test;
 	char string[20], input[10];
 	double maxSpeed;
-	int hp, maxHp, armor, number;
+
+	//char *binary[32];	
+	uint32_t binary32;
+	int hp, maxHp, armor, number, whole; 
+	float fraction;
 	
 	fscanf(fp, "%s", input);
 	test.zergName = (char *) malloc(sizeof(char)* strlen(input));
@@ -186,18 +191,108 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 		else if (strcmp(string, "MaxSpeed") == 0)
 		{
 			printf("DOING STUFF WITH SPEED\n");
-			input[7] = '\0';
+			input[strlen(input) - 3] = '\0';
 			maxSpeed = atof(input);
 			printf("SPEED: %f \n", maxSpeed);
 			//convert float to binary32
-			
+			//ulptr = &maxSpeed;
+			//printf("%08lx\n", *ulptr);
+			whole = maxSpeed;
+			printf("whole: %d \n", whole);
+			fraction = (maxSpeed - whole);
+			printf("fraction: %f \n", fraction);
+			binary32 = convertToBinary(whole, fraction);
+			printf("Binary Speed: %x \n", binary32);
+			exit(10);
 		}
 	}	
 		
 	pcap->output.status = test;
 	
 	return;
+	 
+}
+
+uint32_t convertToBinary(int number, float decimal)
+{
+	uint32_t binary32 = 0x00000000; 
+	uint32_t wholePart = 0x00000000;
+	uint32_t decimalPart = 0x00000000;
+	uint32_t signedBit = 0x00000000;
+	uint32_t exp = 0x00000000;
 	
+	int exponent, count = 0;
+	
+	if (number < 0)
+	{
+		signedBit |= 0x80000000;
+	}
+	
+	
+	while ( number > 1)
+	{
+		if (number % 2 == 1)
+		{
+			wholePart = wholePart | 0x400000;
+			wholePart >>= 1;
+			//printf("whole here %04x \n", wholePart);
+		}
+		else
+		{
+			wholePart >>= 1;
+			//printf("whole here %04x \n", wholePart);
+		}
+		count++;
+		number = number / 2;
+		//printf("count: %d \n", count);
+	}
+	wholePart = (wholePart << 1) ;
+	//printf("binary: %04x \n", wholePart);
+	
+	for (int x = 1; x < 23 - count; x++)
+	{
+		if ((decimal *= 2) >= 1)
+		{
+			decimalPart = decimalPart | 0x1;
+			decimalPart <<= 1;
+			decimal--;
+		}
+		else
+		{
+			decimalPart <<= 1;
+		}
+	}
+	
+	
+	//printf("decimal: %08x \n", decimalPart);
+	
+	exponent = count + 127;
+	printf("Exp: %d %d\n", exponent, count);
+	
+	
+	
+	for( int x = 1; x < 8; x++)
+	{
+		printf("Exponent: %d \n", exponent);
+		if ((exponent % 2) == 1)
+		{
+			exp = exp | 0x40000000;
+			exp >>= 1;
+			printf("here %02x \n", exp);
+		}
+		else
+		{
+			exp >>= 1;
+		}
+		exponent = exponent / 2;
+		printf("Number: %d \n", exponent);
+	}
+	exp |= 0x40000000; 
+	printf("exp: %02x \n", (exp |= 0x40000000));
+	
+	binary32 = signedBit | exp | wholePart | decimalPart;
+	
+	return  binary32;
 }
 
 int getTypeNum(char * name)
