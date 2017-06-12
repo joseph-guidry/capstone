@@ -7,7 +7,11 @@
 #include "codec.h"
 
 unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
-void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+
+uint64_t swapLong( uint64_t x);
+
 int getTypeNum(char * name);
 uint32_t convertToBinary(int number, float decimal);
 
@@ -74,33 +78,50 @@ int main(int argc, char **argv)
 	{
 		printf("%lu %lu \n", filesize, ftell(fp));
 		printf("Message length is %ld\n", filesize - ftell(fp));
+		pcapout.pcapZerg.ver_type_totalLen = (0 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
 		//Run Fill MSGPAYLOAD STRUCTURE
 		payloadSize = fillMsgPayload(&pcapout, fp, filesize);
+		pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
 		printf("Payload Size: %lu \n", payloadSize);
 		printf("Message: %s\n", pcapout.output.data.message);
 	} 
 	else if ( strcmp(string, "Latitude") == 0 )
 	{
 		printf("Message length is %ld\n", filesize - ftell(fp));
+		
+		
+		pcapout.pcapZerg.ver_type_totalLen = (3 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
+		
+		
+		printf("\nVers: %x \nType: %x \n\n", pcapout.pcapZerg.ver_type_totalLen >> 28, pcapout.pcapZerg.ver_type_totalLen >> 24 );
 		//Run Fill GPS DATA STRUCTURE
+		payloadSize = fillGpsPayload(&pcapout, fp, filesize);
+		//pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
+		printf("Payload Size: %lu \n", payloadSize);
 	}
 	else if ( strcmp(string, "Name") == 0 )
 	{
+		//pcapout.pcapZerg.ver_type_totalLen = (pcapout.pcapZerg.ver_type_totalLen >> 28) | 0x01 ;
+		pcapout.pcapZerg.ver_type_totalLen = (1 << 24) | pcapout.pcapZerg.ver_type_totalLen ;;
+		printf("Type: %04x \n", pcapout.pcapZerg.ver_type_totalLen);
+		
 	//SET THE PAYLOAD TYPE IN ZERG HEADER
 		//pcapout.pcapZerg.ver_type_totalLen = ((pcapout.pcapZerg.ver_type_totalLen >> 24) | 0x02);
 		//printf("Zerg Payload type : %x \n", (pcapout.pcapZerg.ver_type_totalLen >> 24) & 0xff);
 		printf("Message length is %ld\n", filesize - ftell(fp));
 		//Run Fill STATUS STRUCTURE
-		fillStatusPayload( &pcapout, fp, filesize);
+		payloadSize = fillStatusPayload( &pcapout, fp, filesize);
+		pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
 	}
 	else
 	{
 		printf("MIGHT BE A CMD\n");
+		pcapout.pcapZerg.ver_type_totalLen = (2 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
 		//GO TO FUNCTION TO EVALUATE IF INPUT == COMMAND
 	}
 	
-	//pcapout.zergHeader.ver_type_totalLen = sizeof(payload) + (pcapout.zergHeader.ver_type_totalLen & 0xffffff);
-
+	//pcapout.zergHeader.ver_type_totalLen = sizeof(payload) + (pcapout.zergHeader.ver_type_totalLen &
+	// 0xffffff);
 
 	// OPEN FILE TO WRITE PCAP TO!!!
 	fp = fopen(argv[2], "wb+");
@@ -129,16 +150,79 @@ int main(int argc, char **argv)
 	n = fwrite(&pcapout.pcapZerg, 1, sizeof(struct zergHeader), fp);
 	printf("Printed bytes: %lu \n", n);
 	
-	printf("%s \n", pcapout.output.data.message);
-	
-	
 	n = fwrite(&pcapout.output.data, 1, payloadSize, fp);
 	printf("Printed bytes: %lu \n", n);
 	
 	return 0;
 }
+unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize)
+{
+	struct gpsDataPayload test;
+	printf("Inisde Fill GPS Payload\n");
+	printf("Position: %lu \n", ftell(fp));
+	
+	char coordinates[60], string[20], input[10], trash[5];
+	char direction;
+	
+	//Get the value after Latitude: 
+	fgets(coordinates, 50, fp);
+	sscanf(coordinates, "%s %s %s", input, trash, &direction);
+	printf("Latitude: %s %c\n", input, direction);
+	test.latitude.value = atof(input) * ( (direction == 'E'? -1 : 1) );
+	printf("Latitude in Binary64: %lx \n", test.latitude.value64);
+	test.latitude.value64 = swapLong(test.latitude.value64);
+	
+	printf("Position: %lu \n", ftell(fp));
+	
+	fgets(coordinates, 60, fp);
+	sscanf(coordinates, "%s %s %s %s", string, input, trash, &direction);
+	printf("First Line: %s %s %s %s\n", string, input, trash, &direction);
+	test.longitude.value = atof(input) * ( (direction == 'S'? -1 : 1) );
+	printf("Longitude in Binary64: %lx \n", test.longitude.value64);
+	test.longitude.value64 = swapLong(test.longitude.value64);
+	
+	fgets(coordinates, 60, fp);
+	sscanf(coordinates, "%s %s", string, input);
+	test.altitude.value = (atof(input) /1.8288);
+	printf("Altitude Line: %s %s\n", string, input);
+	printf("Altitude Line: %s %.4f\n", string, test.altitude.value);
+	test.altitude.value32 = ntohl(test.altitude.value32);
+	
+	fgets(coordinates, 60, fp);
+	sscanf(coordinates, "%s %s", string, input);
+	test.bearing.value = atof(input);
+	printf("Bearing Line: %s %s\n", string, input);
+	printf("Bearing Line: %s %.4f\n", string, test.bearing.value);
+	test.bearing.value32 = ntohl(test.bearing.value32);
+	
+	fgets(coordinates, 60, fp);
+	sscanf(coordinates, "%s %s", string, input);
+	test.speed.value = (atof(input) / 3.6);
+	printf("Speed Line: %s %s\n", string, input);
+	printf("Speed Line: %s %.4f\n", string, test.speed.value);
+	printf("Speed Line: %s %x\n", string, test.speed.value32);
+	test.speed.value32 = ntohl(test.speed.value32);
+	
+	fgets(coordinates, 60, fp);
+	sscanf(coordinates, "%s %s", string, input);
+	test.accuracy.value = atof(input);
+	printf("Accuracy Line: %s %s\n", string, input);
+	test.accuracy.value32 = ntohl(test.accuracy.value32);
+	
+	pcap->output.gps = test;
+	
+	return 32;  //Number of bytes in GPS Payload.
+}
 
-void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
+uint64_t swapLong( uint64_t x)
+{
+	x = ((x << 8 ) & 0xFF00FF00FF00FF00ULL)  | ((x >> 8)  &  0x00FF00FF00FF00FFULL);
+	x = ((x << 16 ) &  0xFFFF0000FFFF0000ULL) | ((x >> 16) &  0x0000FFFF0000FFFFULL);
+	
+	return (x << 32) | (x >> 32);
+}
+
+unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 {
 	printf("Inside Fill Status Payload\n");
 	
@@ -148,8 +232,8 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	int hp, maxHp, armor, number; 
 	
 	fscanf(fp, "%s", input);
-	test.zergName = (char *) malloc(sizeof(char)* strlen(input));
 	printf("Name: %s \n", input);
+	strcpy(test.zergName, input);
 	
 	while(fscanf(fp, "%s%s", string, input) == 2)
 	{
@@ -161,19 +245,18 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 				string[y] = '\0';
 			}
 		}
-		//printf("String: %s \nInput: %s \n", string, input);	
+		printf("String: %s \nInput: %s \n", string, input);	
 		if (strcmp(string, "HP") == 0)
 		{
 			printf("DOING STUFF WITH HP\n");
 			sscanf(input, "%d/%d", &hp, &maxHp);
 			printf("HP: %d | MaxHP: %d \n", hp, maxHp);
-			
-			test.hitPoints = (hp << 8) & test.hitPoints;
-			printf("Hit Points: %08x \n", test.hitPoints);
+			test.hitPoints = test.maxHitPoints = 0x00000000;
+			test.hitPoints = ntohl((test.hitPoints  | hp) << 8 );
+			printf("Hit Points: %04x \n", test.hitPoints);
 			
 			test.maxHitPoints = (maxHp << 8) | test.maxHitPoints;
-			printf("Hit Points: %08x \n", test.maxHitPoints);
-			
+			printf("Max Hit Points: %04x \n", test.maxHitPoints);
 		}
 		else if (strcmp(string, "Type") == 0)
 		{
@@ -187,6 +270,7 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 			test.maxHitPoints &= 0xffffff00;
 			test.maxHitPoints |= number;
 			printf("Hit Points: %08x \n", test.maxHitPoints);
+			test.maxHitPoints = ntohl(test.maxHitPoints);
 		}
 		else if (strcmp(string, "Armor") == 0)
 		{
@@ -205,13 +289,12 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 			printf("SPEED: %f \n", maxSpeed);
 			test.speed.value = maxSpeed;
 			printf("Binary Speed: %04x \n", test.speed.value32);
+			test.speed.value32 = htonl(test.speed.value32);
 		}
 	}	
 		
 	pcap->output.status = test;
-	
-	return;
-	 
+	return 12 + strlen(pcap->output.status.zergName);
 }
 
 int getTypeNum(char * name)
@@ -337,7 +420,7 @@ FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
 			value = (atoi(input) << 28);
 			printf("value:   %08x \n", value);
 			printf("version: %08x \n", zergtest.ver_type_totalLen);
-			zergtest.ver_type_totalLen = ntohl(value | zergtest.ver_type_totalLen);
+			zergtest.ver_type_totalLen = value | zergtest.ver_type_totalLen;
 			printf("version: %08x \n", zergtest.ver_type_totalLen);
 			printf("Version in header: %x\n", zergtest.ver_type_totalLen >> 28);
 			continue;
@@ -370,10 +453,7 @@ FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
 	//After reading the input file completely. CLOSE IT.
 	//fclose(fp);
 	
-	
 	pcap->pcapZerg = zergtest;
-	//pcap->pcap
-	
 	return fp;
 }
 
@@ -381,7 +461,7 @@ void buildZergHeader (struct zergPacket * pcap)
 {
 	struct zergHeader zergtest;
 	
-	zergtest.ver_type_totalLen = ntohl(0x0000000c);
+	zergtest.ver_type_totalLen = ntohl(0x00000000);
 	zergtest.sourceID = ntohs(0x0000);
 	zergtest.destID = ntohs(0x0000);
 	zergtest.seqID = ntohl(0x00000000);
@@ -404,8 +484,6 @@ void buildUdpHeader (struct zergPacket * pcap)
 	
 	return;
 }
-
-
 
 void buildIpHeader (struct zergPacket * pcap)
 {
@@ -439,9 +517,7 @@ void buildEtherFrame (struct zergPacket * pcap)
 	}
 	ethertest.etherType = ntohs(0x0800);
 	
-	
 	pcap->pcapFrame = ethertest;
-	
 }
 
 void buildPcapPacket(struct zergPacket * pcap)
@@ -454,7 +530,6 @@ void buildPcapPacket(struct zergPacket * pcap)
 	headertest.trunPacketLen = ntohs(0x0000);
 	
 	pcap->packetHeader  = headertest;
-	
 
 	return;
 }

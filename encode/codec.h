@@ -64,10 +64,10 @@ struct msgPayload {
 };
 
 struct statusPayload {
-	int32_t hitPoints;
+	uint32_t hitPoints;
 	uint32_t maxHitPoints;
 	convertFloat speed;
-	char * zergName;
+	char zergName[50];
 };
 
 struct commandPayload {
@@ -79,10 +79,10 @@ struct commandPayload {
 struct gpsDataPayload {
 	convertDouble longitude;
 	convertDouble latitude;
-	uint32_t altitude;
-	uint32_t bearing;
-	uint32_t speed;
-	uint32_t accuracy;
+	convertFloat altitude;
+	convertFloat bearing;
+	convertFloat speed;
+	convertFloat accuracy;
 };
 
 typedef union {

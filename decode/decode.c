@@ -34,7 +34,7 @@ int main (int argc, char **argv)
 	while((ftell(fp) < filesize) && ((filesize - ftell(fp)) > 60))
 	{
 		fp = buildPacketData(&pcapfile, fp);
-		printf("The current position of the file: %lu\n", ftell(fp));
+		//printf("The current position of the file: %lu\n", ftell(fp));
 	
 #ifdef DEBUG
 		printf("fileTypeID: %x \n", htonl(pcapfile.fileHeader.fileTypeID));
@@ -230,7 +230,7 @@ FILE * printGpsPayload (struct zergPacket * pcapfile, FILE *fp)
 	degreesConvertDMS(f_coordinate);
 	printf(" %c )\n", direction ? 'W':'E');
 	
-	printf("Altitude:  %.1fm\n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
+	printf("Altitude:  %.4fm\n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
 	printf("Bearing:   %.4f deg.\n", convertBin32toDecimal(htonl(pcap.bearing)));
 	printf("Speed:     %dkm/h\n", (int)((convertBin32toDecimal(htonl(pcap.speed))) * 3.6));
 	printf("Accuracy:  %dm\n", (int) convertBin32toDecimal(htonl(pcap.accuracy)));
@@ -433,7 +433,7 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 	//GET FILESIZE
 	fseek(fp, 0, 2);
 	*filesize = ftell(fp);
-	printf("Filesize: %d \n", *filesize);
+	//printf("Filesize: %d \n", *filesize);
 	fseek(fp, 0, 0);
 	
 	
