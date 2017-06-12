@@ -1,11 +1,11 @@
 #include <stdio.h>
 
-typedef union {
+typedef union {						//Store floats and convert to binary
 	double value;
 	uint64_t value64;
 } convertDouble;
 
-typedef union {
+typedef union {						//Store floats and convert to binary 
 	float value;
 	uint32_t value32;
 } convertFloat;

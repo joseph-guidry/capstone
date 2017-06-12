@@ -78,50 +78,53 @@ int main(int argc, char **argv)
 	{
 		printf("%lu %lu \n", filesize, ftell(fp));
 		printf("Message length is %ld\n", filesize - ftell(fp));
-		pcapout.pcapZerg.ver_type_totalLen = (0 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
+		pcapout.pcapZerg.ver_type_totalLen = ntohl((0 << 24) | pcapout.pcapZerg.ver_type_totalLen );
 		//Run Fill MSGPAYLOAD STRUCTURE
 		payloadSize = fillMsgPayload(&pcapout, fp, filesize);
-		pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
 		printf("Payload Size: %lu \n", payloadSize);
 		printf("Message: %s\n", pcapout.output.data.message);
 	} 
 	else if ( strcmp(string, "Latitude") == 0 )
 	{
 		printf("Message length is %ld\n", filesize - ftell(fp));
-		
-		
-		pcapout.pcapZerg.ver_type_totalLen = (3 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
-		
-		
-		printf("\nVers: %x \nType: %x \n\n", pcapout.pcapZerg.ver_type_totalLen >> 28, pcapout.pcapZerg.ver_type_totalLen >> 24 );
+		pcapout.pcapZerg.ver_type_totalLen = ntohl((3 << 24) | pcapout.pcapZerg.ver_type_totalLen) ;
+		printf("\nVers: %x \nType: %x \n\n",pcapout.pcapZerg.ver_type_totalLen >>28, pcapout.pcapZerg.ver_type_totalLen >> 24 );
 		//Run Fill GPS DATA STRUCTURE
 		payloadSize = fillGpsPayload(&pcapout, fp, filesize);
-		//pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
 		printf("Payload Size: %lu \n", payloadSize);
 	}
 	else if ( strcmp(string, "Name") == 0 )
 	{
-		//pcapout.pcapZerg.ver_type_totalLen = (pcapout.pcapZerg.ver_type_totalLen >> 28) | 0x01 ;
-		pcapout.pcapZerg.ver_type_totalLen = (1 << 24) | pcapout.pcapZerg.ver_type_totalLen ;;
+		pcapout.pcapZerg.ver_type_totalLen = ntohl((1 << 24) | pcapout.pcapZerg.ver_type_totalLen);
 		printf("Type: %04x \n", pcapout.pcapZerg.ver_type_totalLen);
-		
-	//SET THE PAYLOAD TYPE IN ZERG HEADER
-		//pcapout.pcapZerg.ver_type_totalLen = ((pcapout.pcapZerg.ver_type_totalLen >> 24) | 0x02);
-		//printf("Zerg Payload type : %x \n", (pcapout.pcapZerg.ver_type_totalLen >> 24) & 0xff);
 		printf("Message length is %ld\n", filesize - ftell(fp));
+		
 		//Run Fill STATUS STRUCTURE
 		payloadSize = fillStatusPayload( &pcapout, fp, filesize);
-		pcapout.pcapZerg.ver_type_totalLen =(pcapout.pcapZerg.ver_type_totalLen & 0x00ffffff)|payloadSize;
 	}
 	else
 	{
 		printf("MIGHT BE A CMD\n");
-		pcapout.pcapZerg.ver_type_totalLen = (2 << 24) | pcapout.pcapZerg.ver_type_totalLen ;
+		pcapout.pcapZerg.ver_type_totalLen = ntohl((2 << 24) | pcapout.pcapZerg.ver_type_totalLen );
 		//GO TO FUNCTION TO EVALUATE IF INPUT == COMMAND
 	}
 	
-	//pcapout.zergHeader.ver_type_totalLen = sizeof(payload) + (pcapout.zergHeader.ver_type_totalLen &
-	// 0xffffff);
+	//UPDATE ZERG HEADER LENGTH
+	pcapout.pcapZerg.ver_type_totalLen = (pcapout.pcapZerg.ver_type_totalLen & 0x00FFFFFF); 
+	pcapout.pcapZerg.ver_type_totalLen = ntohl(ntohl(pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
+	printf("Payload Size: %lu %lx \n", payloadSize, payloadSize);
+
+	//UPDATE UDP HEADER LENGTH
+	pcapout.pcapUdp.udpLen = pcapout.pcapUdp.udpLen & 0x0000;
+	pcapout.pcapUdp.udpLen = ntohs(pcapout.pcapUdp.udpLen + 20 + payloadSize);
+	
+	//UPDATE IPV4 HEADER LENGTH
+	pcapout.pcapIpv4.totalIPhdrlen = pcapout.pcapIpv4.totalIPhdrlen & 0x0000;
+	pcapout.pcapIpv4.totalIPhdrlen = ntohs(pcapout.pcapIpv4.totalIPhdrlen + 12 + 8 + 20 + payloadSize);
+	
+	//UPDATE pcap PACKET HEADER 
+	pcapout.packetHeader.dataCapture = pcapout.packetHeader.dataCapture & 0x00000000;
+	pcapout.packetHeader.dataCapture = ntohl(pcapout.packetHeader.dataCapture + 14 + 12 + 8 + 20 + payloadSize);
 
 	// OPEN FILE TO WRITE PCAP TO!!!
 	fp = fopen(argv[2], "wb+");
@@ -366,7 +369,7 @@ unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 {
 	int c, msgLength;
 	struct msgPayload test;
-	
+	printf("Inside fillMsgPayload\n");
 	msgLength = filesize - ftell(fp);
 	printf("MsgLength: %d \n", msgLength);
 	
@@ -390,7 +393,7 @@ unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	
 	printf("Size of payload: %lu \n", strlen(pcap->output.data.message));
 	
-	return strlen(pcap->output.data.message) - 2;
+	return strlen(pcap->output.data.message) - 1;
 }
 
 FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
