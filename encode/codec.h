@@ -1,5 +1,15 @@
 #include <stdio.h>
 
+typedef union {
+	double value;
+	uint64_t value64;
+} convertDouble;
+
+typedef union {
+	float value;
+	uint32_t value32;
+} convertFloat;
+
 struct filepcap {
 	uint32_t fileTypeID;			//*File Type ID
 	uint16_t majorVersion;			//*Major Version
@@ -50,13 +60,13 @@ struct zergHeader {
 };
 
 struct msgPayload {
-	char * message;
+	char message[100];
 };
 
 struct statusPayload {
 	int32_t hitPoints;
 	uint32_t maxHitPoints;
-	uint32_t speed;
+	convertFloat speed;
 	char * zergName;
 };
 
@@ -67,8 +77,8 @@ struct commandPayload {
 };
 
 struct gpsDataPayload {
-	uint64_t longitude;
-	uint64_t latitude;
+	convertDouble longitude;
+	convertDouble latitude;
 	uint32_t altitude;
 	uint32_t bearing;
 	uint32_t speed;
@@ -89,7 +99,7 @@ struct zergPacket {
 	struct ipv4Header pcapIpv4;				//pcap IPv4 header
 	struct udpHeader  pcapUdp;				//pcap UDP header
 	struct zergHeader pcapZerg;				//custom Zerg Packet Header
-	payload output;
+	payload output;							//Assign Type of Payload to structure.
 };
 //Analyze the standard headers to determine the type of payload structure that will display the data
 

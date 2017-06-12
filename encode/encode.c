@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include "codec.h"
 
-void fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 int getTypeNum(char * name);
 uint32_t convertToBinary(int number, float decimal);
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 {
 	FILE * fp;
 	char string[20];
-	unsigned long n, filesize;
+	unsigned long n, filesize, payloadSize;
 	struct zergPacket pcapout;
 	
 	
@@ -50,10 +50,12 @@ int main(int argc, char **argv)
 	buildPcapData(&pcapout);
 	
 	
-	printf("BEFORE BUILD ZERG HEADER\n");
+	printf("BEFORE UPDATE ZERG HEADER\n");
 	
 	//OPEN FILE AND FILL INPUT FROM DATA FILE
 	fp = updateZergHeader(&pcapout, fp);
+	
+	printf("TO: %x\nFROM: %x\n", pcapout.pcapZerg.sourceID, pcapout.pcapZerg.destID);
 	
 	printf("After BUILD ZERG HEADER\n");
 	
@@ -70,9 +72,12 @@ int main(int argc, char **argv)
 	printf("Position: %ld \n", ftell(fp));
 	if (strcmp(string, "Message") == 0)
 	{
+		printf("%lu %lu \n", filesize, ftell(fp));
 		printf("Message length is %ld\n", filesize - ftell(fp));
 		//Run Fill MSGPAYLOAD STRUCTURE
-		fillMsgPayload(&pcapout, fp, filesize);
+		payloadSize = fillMsgPayload(&pcapout, fp, filesize);
+		printf("Payload Size: %lu \n", payloadSize);
+		printf("Message: %s\n", pcapout.output.data.message);
 	} 
 	else if ( strcmp(string, "Latitude") == 0 )
 	{
@@ -94,9 +99,8 @@ int main(int argc, char **argv)
 		//GO TO FUNCTION TO EVALUATE IF INPUT == COMMAND
 	}
 	
-	exit(1);	
+	//pcapout.zergHeader.ver_type_totalLen = sizeof(payload) + (pcapout.zergHeader.ver_type_totalLen & 0xffffff);
 
-	//MODIFY LENGTH SEGMENTS
 
 	// OPEN FILE TO WRITE PCAP TO!!!
 	fp = fopen(argv[2], "wb+");
@@ -122,9 +126,13 @@ int main(int argc, char **argv)
 	n = fwrite(&pcapout.pcapUdp, 1, sizeof(struct udpHeader), fp);
 	printf("Printed bytes: %lu \n", n);
 	
-	//Adjust the TOTAL LENGTH?
-	
 	n = fwrite(&pcapout.pcapZerg, 1, sizeof(struct zergHeader), fp);
+	printf("Printed bytes: %lu \n", n);
+	
+	printf("%s \n", pcapout.output.data.message);
+	
+	
+	n = fwrite(&pcapout.output.data, 1, payloadSize, fp);
 	printf("Printed bytes: %lu \n", n);
 	
 	return 0;
@@ -137,11 +145,7 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	struct statusPayload test;
 	char string[20], input[10];
 	double maxSpeed;
-
-	//char *binary[32];	
-	uint32_t binary32;
-	int hp, maxHp, armor, number, whole; 
-	float fraction;
+	int hp, maxHp, armor, number; 
 	
 	fscanf(fp, "%s", input);
 	test.zergName = (char *) malloc(sizeof(char)* strlen(input));
@@ -180,13 +184,18 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 				fprintf(stderr, "wrong type\n");
 			}
 			printf("TYPE: %d\n", number);
+			test.maxHitPoints &= 0xffffff00;
+			test.maxHitPoints |= number;
+			printf("Hit Points: %08x \n", test.maxHitPoints);
 		}
 		else if (strcmp(string, "Armor") == 0)
 		{
 			printf("DOING STUFF WITH Armor\n");
 			armor = atoi(input);
 			printf("ARMOR: %d \n", armor);
-			//test.maxHitPoints = test.maxHitPoints | atoi(input);
+			test.hitPoints &= 0xffffff00;
+			test.hitPoints |= armor;
+			printf("Hit Points: %08x \n", test.hitPoints);
 		}
 		else if (strcmp(string, "MaxSpeed") == 0)
 		{
@@ -194,16 +203,8 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 			input[strlen(input) - 3] = '\0';
 			maxSpeed = atof(input);
 			printf("SPEED: %f \n", maxSpeed);
-			//convert float to binary32
-			//ulptr = &maxSpeed;
-			//printf("%08lx\n", *ulptr);
-			whole = maxSpeed;
-			printf("whole: %d \n", whole);
-			fraction = (maxSpeed - whole);
-			printf("fraction: %f \n", fraction);
-			binary32 = convertToBinary(whole, fraction);
-			printf("Binary Speed: %x \n", binary32);
-			exit(10);
+			test.speed.value = maxSpeed;
+			printf("Binary Speed: %04x \n", test.speed.value32);
 		}
 	}	
 		
@@ -211,88 +212,6 @@ void fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	
 	return;
 	 
-}
-
-uint32_t convertToBinary(int number, float decimal)
-{
-	uint32_t binary32 = 0x00000000; 
-	uint32_t wholePart = 0x00000000;
-	uint32_t decimalPart = 0x00000000;
-	uint32_t signedBit = 0x00000000;
-	uint32_t exp = 0x00000000;
-	
-	int exponent, count = 0;
-	
-	if (number < 0)
-	{
-		signedBit |= 0x80000000;
-	}
-	
-	
-	while ( number > 1)
-	{
-		if (number % 2 == 1)
-		{
-			wholePart = wholePart | 0x400000;
-			wholePart >>= 1;
-			//printf("whole here %04x \n", wholePart);
-		}
-		else
-		{
-			wholePart >>= 1;
-			//printf("whole here %04x \n", wholePart);
-		}
-		count++;
-		number = number / 2;
-		//printf("count: %d \n", count);
-	}
-	wholePart = (wholePart << 1) ;
-	//printf("binary: %04x \n", wholePart);
-	
-	for (int x = 1; x < 23 - count; x++)
-	{
-		if ((decimal *= 2) >= 1)
-		{
-			decimalPart = decimalPart | 0x1;
-			decimalPart <<= 1;
-			decimal--;
-		}
-		else
-		{
-			decimalPart <<= 1;
-		}
-	}
-	
-	
-	//printf("decimal: %08x \n", decimalPart);
-	
-	exponent = count + 127;
-	printf("Exp: %d %d\n", exponent, count);
-	
-	
-	
-	for( int x = 1; x < 8; x++)
-	{
-		printf("Exponent: %d \n", exponent);
-		if ((exponent % 2) == 1)
-		{
-			exp = exp | 0x40000000;
-			exp >>= 1;
-			printf("here %02x \n", exp);
-		}
-		else
-		{
-			exp >>= 1;
-		}
-		exponent = exponent / 2;
-		printf("Number: %d \n", exponent);
-	}
-	exp |= 0x40000000; 
-	printf("exp: %02x \n", (exp |= 0x40000000));
-	
-	binary32 = signedBit | exp | wholePart | decimalPart;
-	
-	return  binary32;
 }
 
 int getTypeNum(char * name)
@@ -360,23 +279,35 @@ int getTypeNum(char * name)
 	}
 }
 
-void fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
+unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 {
 	int c, msgLength;
 	struct msgPayload test;
 	
 	msgLength = filesize - ftell(fp);
-	test.message = (char*)malloc(sizeof(char) * msgLength);
-	for (int x = 0; x < msgLength; x++)
+	printf("MsgLength: %d \n", msgLength);
+	
+	//test.message = (char*)malloc(sizeof(char) * msgLength);
+	if ( (c = fgetc(fp)) == ' ')
+	{
+		;
+	}
+	else
+	{
+		ungetc(c, fp);
+	}
+	for (int x = 0; x < msgLength - 2; x++)
 	{
 		c = fgetc(fp);
+		printf("%c", c);
 		test.message[x] = c;
 	}
 	
-	
 	pcap->output.data = test;
 	
-	return;
+	printf("Size of payload: %lu \n", strlen(pcap->output.data.message));
+	
+	return strlen(pcap->output.data.message) - 2;
 }
 
 FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
@@ -406,7 +337,7 @@ FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
 			value = (atoi(input) << 28);
 			printf("value:   %08x \n", value);
 			printf("version: %08x \n", zergtest.ver_type_totalLen);
-			zergtest.ver_type_totalLen = (value | zergtest.ver_type_totalLen);
+			zergtest.ver_type_totalLen = ntohl(value | zergtest.ver_type_totalLen);
 			printf("version: %08x \n", zergtest.ver_type_totalLen);
 			printf("Version in header: %x\n", zergtest.ver_type_totalLen >> 28);
 			continue;
@@ -450,7 +381,7 @@ void buildZergHeader (struct zergPacket * pcap)
 {
 	struct zergHeader zergtest;
 	
-	zergtest.ver_type_totalLen = ntohl(0x00000000);
+	zergtest.ver_type_totalLen = ntohl(0x0000000c);
 	zergtest.sourceID = ntohs(0x0000);
 	zergtest.destID = ntohs(0x0000);
 	zergtest.seqID = ntohl(0x00000000);
