@@ -67,7 +67,7 @@ int main (int argc, char **argv)
 		//printf("The current position of the file: %lu\n", ftell(fp));
 	
 		msgType = ((htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
-		//printf("msgType: %d\n", msgType);
+		printf("msgType: %d\n", msgType);
 		switch (msgType)
 		{
 			case 0:
@@ -94,11 +94,12 @@ int main (int argc, char **argv)
 				printf("Unknown payload type\n");
 				break;
 		}
+		
 		/*printf("The current position of the file: %lu\n", ftell(fp));
-		fread(filename, 1, 8, fp);
+		fread(filename, 1, 4, fp);
 		if (atoi(filename) != 0)
 		{
-			fseek(fp, -8, SEEK_CUR);
+			fseek(fp, -4, SEEK_CUR);
 		}
 		//printf("The current position of the file: %lu\n", ftell(fp));
 		*/
@@ -392,8 +393,8 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 	int msgLength;
 	int c;
 	
-	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xfffff) - sizeof(struct zergHeader));
-	//printf("msgLength: %d\n", msgLength);
+	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xffffff) - 12);
+	printf("msgLength: %d\n", msgLength);
 	if (msgLength <= 0)
 	{
 		fprintf(stderr, "No message available\n");

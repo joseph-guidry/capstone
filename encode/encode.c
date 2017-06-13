@@ -87,11 +87,12 @@ int main(int argc, char **argv)
 		{
 			//printf("%lu %lu \n", filesize, ftell(fp));
 			//printf("Message length is %ld\n", filesize - ftell(fp));
+			//printf("ver_type_totalLen: %08x\n", ntohl(pcapout.pcapZerg.ver_type_totalLen));
 			pcapout.pcapZerg.ver_type_totalLen = ntohl((0 << 24) | pcapout.pcapZerg.ver_type_totalLen );
 			//Run Fill MSGPAYLOAD STRUCTURE
 			payloadSize = fillMsgPayload(&pcapout, fp, filesize);
-			//printf("Payload Size: %lu \n", payloadSize);
-			//printf("Message: %s\n", pcapout.output.data.message);
+			//printf("Message Payload Size: %lu \n", payloadSize);
+			//rintf("Message: %s\n", pcapout.output.data.message);
 		} 
 		else if ( strcmp(string, "Latitude") == 0 )
 		{
@@ -113,7 +114,7 @@ int main(int argc, char **argv)
 		else
 		{
 			//printf("MIGHT BE A CMD\n");
-			pcapout.pcapZerg.ver_type_totalLen = ntohl((2 << 24) | pcapout.pcapZerg.ver_type_totalLen );
+			pcapout.pcapZerg.ver_type_totalLen = ntohl( ((2 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000 );
 			//printf("Payload Type: %x \n", pcapout.pcapZerg.ver_type_totalLen << 24);
 			//printf("Command: %s \n", string);
 		
@@ -124,9 +125,12 @@ int main(int argc, char **argv)
 		}
 
 		//UPDATE ZERG HEADER LENGTH
-		pcapout.pcapZerg.ver_type_totalLen = (pcapout.pcapZerg.ver_type_totalLen & 0x00FFFFFF); 
+		printf("ver_type_totalLen: %08x\n", ntohl(pcapout.pcapZerg.ver_type_totalLen));
+		//pcapout.pcapZerg.ver_type_totalLen = ntohl(pcapout.pcapZerg.ver_type_totalLen & 0x000000ff); 
+		//printf("ver_type_totalLen: %08x\n", pcapout.pcapZerg.ver_type_totalLen);
 		pcapout.pcapZerg.ver_type_totalLen = ntohl(ntohl(pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
 		printf("Payload Size: %lu %lx \n", payloadSize, payloadSize);
+		printf("ver_type_totalLen: %08x\n", pcapout.pcapZerg.ver_type_totalLen);
 
 		//UPDATE UDP HEADER LENGTH
 		pcapout.pcapUdp.udpLen = pcapout.pcapUdp.udpLen & 0x0000;
@@ -141,7 +145,6 @@ int main(int argc, char **argv)
 		pcapout.packetHeader.dataCapture = ntohl(pcapout.packetHeader.dataCapture + 14 + 12 + 8 + 20 + payloadSize);
 
 		// OPEN FILE TO WRITE PCAP TO!!!
-		
 		printf("OUTPUT FILE IS OPEN\n");
 	
 		
@@ -493,7 +496,7 @@ unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	{
 		ungetc(c, fp);
 	}
-	for (int x = 0; x < msgLength - 2; x++)
+	for (int x = 0; x < msgLength -1; x++)
 	{
 		c = fgetc(fp);
 		//printf("%c", c);
@@ -504,7 +507,7 @@ unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 	
 	//printf("Size of payload: %lu \n", strlen(pcap->output.data.message));
 	
-	return strlen(pcap->output.data.message) - 1;
+	return msgLength - 1;
 }
 
 FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
@@ -534,7 +537,7 @@ FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp)
 			value = (atoi(input) << 28);
 			//printf("value:   %08x \n", value);
 			//printf("version: %08x \n", zergtest.ver_type_totalLen);
-			zergtest.ver_type_totalLen = value | zergtest.ver_type_totalLen;
+			zergtest.ver_type_totalLen = (value | zergtest.ver_type_totalLen) & 0xF0000000;
 			//printf("version: %08x \n", zergtest.ver_type_totalLen);
 			//printf("Version in header: %x\n", zergtest.ver_type_totalLen >> 28);
 			continue;
@@ -577,6 +580,8 @@ void buildZergHeader (struct zergPacket * pcap)
 	zergtest.seqID = ntohl(0x00000000);
 	
 	pcap->pcapZerg = zergtest;
+	
+	printf("ver_type_totalLen: %08x\n", ntohl(pcap ->pcapZerg.ver_type_totalLen));
 	
 	return;
 }
