@@ -204,7 +204,7 @@ unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize,
 	else if (strcmp(commandName, "RESERVED") == 0)
 	{
 		test.command = ntohs(0x03);
-		printf("RESERVED CMD\n");
+		printf("RESERVED\n");
 		optionLength += 2; 
 	}
 	else if (strcmp(commandName, "RETURN") == 0)
@@ -219,12 +219,19 @@ unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize,
 		printf("SET_GROUP CMD\n");
 		fscanf(fp, "%s", input);
 		printf("Param1: %s \n", input);
-		test.parameter1 = ntohs(atoi(input));
+		if (strcmp(input, "ADD") == 0)
+		{
+			test.parameter1 = ntohs(0x01);
+		}
+		else
+		{
+			test.parameter1 = 0x00;	
+		}
 		fscanf(fp, "%s", input);
 		printf("Param2: %s \n", input);
 		test.parameter2.value32 = atoi(input);
-		test.parameter2.value32 = ntohl(~(test.parameter2.value32) + 1);
-		printf("Param1: %x\nParam2: %f %x\n", test.parameter1, test.parameter2.value, test.parameter2.value32);
+		test.parameter2.value32 = ntohl(test.parameter2.value32);
+		printf("Param1: %x\nParam2: %d %x\n", test.parameter1, test.parameter2.value32, test.parameter2.value32);
 		optionLength += 8; 
 	}
 	else if (strcmp(commandName, "STOP") == 0)
@@ -237,8 +244,8 @@ unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize,
 	{
 		test.command = ntohs(0x07);
 		printf("REPEAT CMD\n");
-		test.parameter1 = ntohs(atoi(input));
-		test.parameter2.value = 4; //sequence ID;
+		test.parameter1 = ntohs(0x00);
+		test.parameter2.value32 = pcap->pcapZerg.seqID;
 		optionLength += 8; 
 	}
 	else
