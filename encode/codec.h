@@ -73,7 +73,7 @@ struct statusPayload {
 struct commandPayload {
 	uint16_t command;
 	uint16_t parameter1;
-	uint32_t parameter2;
+	convertFloat parameter2; //CHANGE UNION CONVERT FLOAT????
 };
 
 struct gpsDataPayload {

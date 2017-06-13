@@ -9,6 +9,7 @@
 unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
 unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize, char * command);
 
 uint64_t swapLong( uint64_t x);
 
@@ -106,9 +107,15 @@ int main(int argc, char **argv)
 	{
 		printf("MIGHT BE A CMD\n");
 		pcapout.pcapZerg.ver_type_totalLen = ntohl((2 << 24) | pcapout.pcapZerg.ver_type_totalLen );
-		//GO TO FUNCTION TO EVALUATE IF INPUT == COMMAND
+		printf("Payload Type: %x \n", pcapout.pcapZerg.ver_type_totalLen << 24);
+		printf("Command: %s \n", string);
+		
+		if ( (payloadSize = fillCmdPayload(&pcapout, fp, filesize, string)) < 0)
+		{
+			fprintf(stderr, "Invalid packet\n");
+		}
 	}
-	
+
 	//UPDATE ZERG HEADER LENGTH
 	pcapout.pcapZerg.ver_type_totalLen = (pcapout.pcapZerg.ver_type_totalLen & 0x00FFFFFF); 
 	pcapout.pcapZerg.ver_type_totalLen = ntohl(ntohl(pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
@@ -158,6 +165,95 @@ int main(int argc, char **argv)
 	
 	return 0;
 }
+
+unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize, char * commandName)
+{
+	int optionLength = 0;
+	char input[10];
+	//int param1;
+	//uint32_t param2;
+	struct commandPayload test;
+	
+	printf("Command: [%s] \n", commandName);
+	if (strcmp(commandName, "GET_STATUS") == 0)
+	{
+		printf("GETSTATUS\n");
+		test.command = ntohs(0x00);
+		optionLength += 2;
+	}
+	else if (strcmp(commandName, "GOTO") == 0)
+	{
+		test.command = ntohs(0x01);
+		//printf("GOTO CMD\n");
+		fscanf(fp, "%s", input);
+		//printf("Param1: %s \n", input);
+		test.parameter1 = ntohs(atoi(input));
+		fscanf(fp, "%s", input);
+		//printf("Param2: %s \n", input);
+		test.parameter2.value = atof(input);
+		test.parameter2.value32 = ntohl(test.parameter2.value32);
+		//printf("Param1: %x\nParam2: %f %x\n", test.parameter1, test.parameter2.value, test.parameter2.value32);
+		optionLength += 8; 
+	}
+	else if (strcmp(commandName, "GET_GPS") == 0)
+	{
+		test.command = ntohs(0x02);
+		printf("GET_GPS\n");
+		optionLength += 2;
+	}
+	else if (strcmp(commandName, "RESERVED") == 0)
+	{
+		test.command = ntohs(0x03);
+		printf("RESERVED CMD\n");
+		optionLength += 2; 
+	}
+	else if (strcmp(commandName, "RETURN") == 0)
+	{
+		test.command = ntohs(0x04);
+		printf("RETURN CMD\n");
+		optionLength += 2;
+	}
+	else if (strcmp(commandName, "SET_GROUP") == 0)
+	{
+		test.command = ntohs(0x05);
+		printf("SET_GROUP CMD\n");
+		fscanf(fp, "%s", input);
+		printf("Param1: %s \n", input);
+		test.parameter1 = ntohs(atoi(input));
+		fscanf(fp, "%s", input);
+		printf("Param2: %s \n", input);
+		test.parameter2.value32 = atoi(input);
+		test.parameter2.value32 = ntohl(~(test.parameter2.value32) + 1);
+		printf("Param1: %x\nParam2: %f %x\n", test.parameter1, test.parameter2.value, test.parameter2.value32);
+		optionLength += 8; 
+	}
+	else if (strcmp(commandName, "STOP") == 0)
+	{
+		test.command = ntohs(0x06);
+		printf("STOP CMD\n");
+		optionLength += 2;
+	}
+	else if (strcmp(commandName, "REPEAT") == 0)
+	{
+		test.command = ntohs(0x07);
+		printf("REPEAT CMD\n");
+		test.parameter1 = ntohs(atoi(input));
+		test.parameter2.value = 4; //sequence ID;
+		optionLength += 8; 
+	}
+	else
+	{
+		test.command = 0xFF;           //UNKNOWN COMMAND TYPE
+		printf("UNKNOWN CMD\n");
+		optionLength += 2;
+	}
+	
+	pcap->output.command = test;
+	
+	return optionLength;
+	
+}
+
 unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize)
 {
 	struct gpsDataPayload test;
