@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include <math.h>
 #include <inttypes.h>
-#include "codec.h"
+#include "decode.h"
 
 
 FILE * buildPcapData (struct zergPacket * pcap, char * filename, int * filesize);
@@ -93,10 +93,16 @@ int main (int argc, char **argv)
 			default:
 				printf("Unknown payload type\n");
 				break;
-		}	
-		
+		}
+		/*printf("The current position of the file: %lu\n", ftell(fp));
+		fread(filename, 1, 8, fp);
+		if (atoi(filename) != 0)
+		{
+			fseek(fp, -8, SEEK_CUR);
+		}
+		//printf("The current position of the file: %lu\n", ftell(fp));
+		*/
 	}
-	//printf("The current position of the file: %lu\n", ftell(fp));
 	fclose(fp);
 	
 
@@ -138,13 +144,13 @@ FILE * printCmdPayload (struct zergPacket * pcapfile, FILE *fp)
 			//printf("Parameter 2: %f \n", convertBin32toDecimal(param2));
 			break;
 		case 2:
-			printf("GET_GPS command\n");
+			printf("GET_GPS\n");
 			break;
 		case 3:
-			printf("RESERVED command\n");
+			printf("RESERVED\n");
 			break;
 		case 4:
-			printf("RETURN command\n");
+			printf("RETURN\n");
 			break;
 		case 5:
 			param1 = htons(pcap.parameter1);
@@ -155,7 +161,7 @@ FILE * printCmdPayload (struct zergPacket * pcapfile, FILE *fp)
 			printf("SET_GROUP %d %s\n", param2, (param1 == 1)? "ADD": "REMOVE");
 			break;
 		case 6:
-			printf("STOP command\n");
+			printf("STOP\n");
 			break;
 		case 7:
 			param1 = htons(pcap.parameter1);
@@ -165,7 +171,7 @@ FILE * printCmdPayload (struct zergPacket * pcapfile, FILE *fp)
 			//printf("Parameter 2: %u \n", param2);
 			break;
 		default:
-			printf("Unknown command\n");
+			printf("Unknown\n");
 			break;
 	}
 	return fp;
@@ -409,7 +415,7 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 		}
 		pcap.message[x] = c;
 	}
-	printf("Message: %s", pcap.message);
+	//printf("Message: %s", pcap.message);
 	putchar('\n');
 	
 	return fp;
@@ -426,6 +432,7 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 	if (fp == NULL)
 	{
 		fprintf(stderr, "Could not open %s \n", filename);
+		exit(1);
 	}
 	
 	//printf("Opened the FILE!\n");

@@ -6,8 +6,10 @@
 
 all: decode
 
-decode: decode.c codec.h
+decode: decode.c decode.h
 	gcc -Wall -o decode decode.c -lm
 		
+debug: decode.c decode.h
+	gcc -g -Wall -o debug decode.c -lm
 clean:
-	rm *
+	rm decode
