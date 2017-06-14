@@ -117,4 +117,20 @@ struct zergPacket {
 	payload output;							//Assign Type of Payload to structure.
 };
 //Analyze the standard headers to determine the type of payload structure that will display the data
+unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp);
+unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp);
+unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, char * command);
 
+uint64_t swapLong( uint64_t x);
+
+int getTypeNum(char * name);
+uint32_t convertToBinary(int number, float decimal);
+
+void buildPcapData (struct zergPacket * pcap);
+void buildPcapPacket (struct zergPacket * pcap);
+void buildEtherFrame (struct zergPacket * pcap);
+void buildIpHeader (struct zergPacket * pcap);
+void buildUdpHeader (struct zergPacket * pcap);
+void buildZergHeader (struct zergPacket *pcap);
+FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp);
