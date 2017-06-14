@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <math.h>
+#include <inttypes.h>
 
 struct filepcap {
 	uint32_t fileTypeID;			//*File Type ID
