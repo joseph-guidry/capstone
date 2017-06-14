@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 		//printf("ver_type_totalLen: %08x\n", pcapout.pcapZerg.ver_type_totalLen);
 		pcapout.pcapZerg.ver_type_totalLen = ntohl(ntohl(pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
 		printf("Payload Size: %lu %lx \n", payloadSize, payloadSize);
-		printf("ver_type_totalLen: %08x\n", pcapout.pcapZerg.ver_type_totalLen);
+		printf("Last ver_type_totalLen: %08x\n", pcapout.pcapZerg.ver_type_totalLen);
 
 		//UPDATE UDP HEADER LENGTH
 		pcapout.pcapUdp.udpLen = pcapout.pcapUdp.udpLen & 0x0000;

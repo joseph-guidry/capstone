@@ -59,15 +59,10 @@ int main (int argc, char **argv)
 		//printf("Zerg total Length: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) & 0xffffff);
 		printf("From: %u\n", htons(pcapfile.pcapZerg.sourceID));
 		printf("To: %u\n", htons(pcapfile.pcapZerg.destID));
-
-	
-	
-
-	
 		//printf("The current position of the file: %lu\n", ftell(fp));
 	
 		msgType = ((htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
-		printf("msgType: %d\n", msgType);
+		//printf("msgType: %d\n", msgType);
 		switch (msgType)
 		{
 			case 0:
@@ -394,7 +389,7 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 	int c;
 	
 	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xffffff) - 12);
-	printf("msgLength: %d\n", msgLength);
+	//printf("msgLength: %d\n", msgLength);
 	if (msgLength <= 0)
 	{
 		fprintf(stderr, "No message available\n");
@@ -416,8 +411,9 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 		}
 		pcap.message[x] = c;
 	}
-	//printf("Message: %s", pcap.message);
-	putchar('\n');
+	
+	//OUTPUT MESSAGE
+	printf("Message: %s", pcap.message);
 	
 	return fp;
 }
