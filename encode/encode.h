@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <math.h>
+#include <inttypes.h>
 
 typedef union {						//Store floats and convert to binary
 	double value;
@@ -9,15 +14,7 @@ typedef union {						//Store floats and convert to binary
 	float value;
 	uint32_t value32;
 } convertFloat;
-\
-/*
-typdef union {
-	struct ipv4Header ipv4;
-	struct ipv6Header ipv6
 
-} ipVersion;
-
-*/
 struct filepcap {
 	uint32_t fileTypeID;			//*File Type ID
 	uint16_t majorVersion;			//*Major Version
@@ -52,14 +49,7 @@ struct ipv4Header {
 	uint32_t srcAddroct2;
 	
 };
-/*
-struct ipv6Header {
-	uint32_t ver_class_flowLabel;
-	uint32_t payloadLen_nxtHdr_HopLimit;
-	uint8_t srcAddress[32];
-	uint8_t destAddress[32];
-};
-*/
+
 struct udpHeader {
 	uint16_t sport;					//UDP Source Port
 	uint16_t dport;					//UDP Destination Port
