@@ -18,15 +18,17 @@ FILE * printMsgPayload (struct zergPacket * pcapfile, FILE *fp)
 		fprintf(stderr, "Not enough memory\n");
 		exit(1);
 	}
+	
 	for (int x = 0; x < msgLength; x++)
 	{
 		c = fgetc(fp);
-		if (c == EOF)
+		if ( (c == EOF) )
 		{
 			break;
 		}
 		pcap.message[x] = c;
 	}
-	printf("Message: %s", pcap.message);
+	printf("Message: %s\n", pcap.message);
+	free(pcap.message);
 	return fp;
 }

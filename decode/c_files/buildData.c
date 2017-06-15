@@ -22,20 +22,35 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 
 FILE * buildPacketData( struct zergPacket * pcap, FILE *fp )
 {
+	unsigned long n;
 	struct headerpcap headertest;
 	struct etherFrame ethertest;
-	struct ipv4Header iptest;
+	ipVersion iptest;
 	struct udpHeader udptest;
 	struct zergHeader zergtest;
 	
 	fread(&headertest, 1, sizeof(struct headerpcap),  fp);
 	pcap->packetHeader = headertest;
+	
 	fread(&ethertest, 1, sizeof(struct etherFrame),  fp);
 	pcap->pcapFrame = ethertest;
-	fread(&iptest, 1, sizeof(struct ipv4Header),  fp);
-	pcap->pcapIpv4 = iptest;
+	
+	printf("here %x\n", htons(ethertest.etherType));
+	if (htons(ethertest.etherType) == 0x0800)
+	{
+		printf("IPV4\n");
+		fread(&iptest, 1, 20,  fp);
+	}
+	else if ( htons(ethertest.etherType) == 0x08DD)
+	{
+		printf("IPV6\n");
+		fread(&iptest, 1, 40,  fp);
+	}
+	pcap->pcapIp = iptest;
+
 	fread(&udptest, 1, sizeof(struct udpHeader),  fp);
 	pcap->pcapUdp = udptest;
+	
 	fread(&zergtest, 1, sizeof(struct zergHeader),  fp);
 	pcap->pcapZerg = zergtest;
 	

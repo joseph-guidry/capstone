@@ -9,7 +9,8 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	
 	// Position prior to reading status payload header.
 	fread(&pcap, 1, 12, fp);  
-	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xfffff) - sizeof(struct zergHeader));
+	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xfffff) - 12);
+	printf("MsgLength: %d\n", msgLength);
 	if (msgLength <= 0)
 	{
 		fprintf(stderr, "No message available\n");
@@ -26,10 +27,11 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	for (int x = 0; x < msgLength; x++)
 	{
 		c = fgetc(fp);
-		if (c == EOF)
+		if ( (c == EOF) || (c == '\n') )
 		{
 			break;
 		}
+		
 		pcap.zergName[x] = c;
 	}
 	printf("Name: %s \n", pcap.zergName);
@@ -39,6 +41,7 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	printf("Armor: %x \n", htonl(pcap.hitPoints) & 0xff);
 	zergSpeed = convertBin32toDecimal(htonl(pcap.speed));
 	printf("MaxSpeed: %.4fm/s\n", zergSpeed);
+	free(pcap.zergName);
 	return fp; 
 }
 
