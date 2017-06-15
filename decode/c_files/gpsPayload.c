@@ -24,10 +24,10 @@ FILE * printGpsPayload (FILE *fp)
 	degreesConvertDMS(f_coordinate);
 	printf(" %c )\n", direction ? 'W':'E');
 	
-	printf("Altitude:  %.6fm\n", (convertBin32toDecimal(htonl(pcap.altitude)))* 1.8288);
-	printf("Bearing:   %.6f deg.\n", convertBin32toDecimal(htonl(pcap.bearing)));
-	printf("Speed:     %dkm/h\n", (int)((convertBin32toDecimal(htonl(pcap.speed))) * 3.6));
-	printf("Accuracy:  %dm\n", (int) convertBin32toDecimal(htonl(pcap.accuracy)));
+	printf("Altitude:  %.6fm\n", (convertBin32toDecimal(htonl(pcap.altitude) & 0x7FFFFFFF) )* 1.8288);
+	printf("Bearing:   %.6f deg.\n", convertBin32toDecimal(htonl(pcap.bearing)& 0x7FFFFFFF) );
+	printf("Speed:     %ukm/h\n", (int)((convertBin32toDecimal(htonl(pcap.speed)& 0x7FFFFFFF) ) * 3.6));
+	printf("Accuracy:  %um\n", (int) convertBin32toDecimal(htonl(pcap.accuracy)));
 	
 	return fp;
 }

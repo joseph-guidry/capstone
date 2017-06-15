@@ -39,7 +39,7 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	getZergType(zergType, (htonl(pcap.maxHitPoints) & 0xff));
 	printf("Type: %s \n" ,zergType);
 	printf("Armor: %x \n", htonl(pcap.hitPoints) & 0xff);
-	zergSpeed = convertBin32toDecimal(htonl(pcap.speed));
+	zergSpeed = convertBin32toDecimal(htonl(pcap.speed) & 0x7fffffff);
 	printf("MaxSpeed: %.4fm/s\n", zergSpeed);
 	free(pcap.zergName);
 	return fp; 

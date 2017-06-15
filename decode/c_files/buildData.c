@@ -35,15 +35,12 @@ FILE * buildPacketData( struct zergPacket * pcap, FILE *fp )
 	fread(&ethertest, 1, sizeof(struct etherFrame),  fp);
 	pcap->pcapFrame = ethertest;
 	
-	printf("here %x\n", htons(ethertest.etherType));
 	if (htons(ethertest.etherType) == 0x0800)
 	{
-		printf("IPV4\n");
 		fread(&iptest, 1, 20,  fp);
 	}
 	else if ( htons(ethertest.etherType) == 0x08DD)
 	{
-		printf("IPV6\n");
 		fread(&iptest, 1, 40,  fp);
 	}
 	pcap->pcapIp = iptest;
