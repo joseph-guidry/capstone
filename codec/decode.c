@@ -18,7 +18,7 @@ int main (int argc, char **argv)
 	while((ftell(fp) < filesize) && ((filesize - ftell(fp)) > 60))
 	{
 		fp = buildPacketData(&pcapfile, fp);
-		printf("Version: %u \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 28);
+		printf("Version: %x \n", htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 28);
 		printf("Sequence: %u \n", htonl(pcapfile.pcapZerg.seqID));
 		printf("From: %u\n", htons(pcapfile.pcapZerg.sourceID));
 		printf("To: %u\n", htons(pcapfile.pcapZerg.destID));

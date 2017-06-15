@@ -33,7 +33,7 @@ struct headerpcap {
 };
 
 struct etherFrame {
-	uint8_t destMac[6];				//Ethernet Destination MAC address
+	uint8_t destMac[6];			//Ethernet Destination MAC address
 	uint8_t srcMac[6];					
 	uint16_t etherType;
 };
@@ -47,7 +47,13 @@ struct ipv4Header {
 	uint16_t ipChecksum;
 	uint32_t srcAddroct1;				//Source IP Address
 	uint32_t srcAddroct2;
-	
+};
+
+struct ipv6Header {
+	uint32_t ver_class_flowLabel;
+	uint32_t payloadLen_nxtHdr_HopLimit;
+	uint8_t srcAddress[16];
+	uint8_t destAddress[16];
 };
 
 struct udpHeader {
@@ -91,6 +97,11 @@ struct gpsDataPayload {
 };
 
 typedef union {
+	struct ipv4Header ipv4;
+	struct ipv6Header ipv6;
+} ipVersion;
+
+typedef union {
 	struct msgPayload data;
 	struct statusPayload status;
 	struct commandPayload command;
@@ -101,23 +112,27 @@ struct zergPacket {
 	struct filepcap fileHeader;				//pcap File Header structure
 	struct headerpcap packetHeader;  		//pcap Packet Header structure
 	struct etherFrame pcapFrame;			//pcap Ethernet Frame
-	struct ipv4Header pcapIpv4;				//pcap IPv4 header
+	ipVersion pcapIp;				        //pcap IPv4 header
 	struct udpHeader  pcapUdp;				//pcap UDP header
 	struct zergHeader pcapZerg;				//custom Zerg Packet Header
 	payload output;							//Assign Type of Payload to structure.
 };
+//Analyze the standard headers to determine the type of payload structure that will display the data
 
-unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
-unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp);
-unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp);
-unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, char * command);
-uint64_t swapLong( uint64_t x);
-int getTypeNum(char * name);
-uint32_t convertToBinary(int number, float decimal);
-void buildPcapData (struct zergPacket * pcap);
-void buildPcapPacket (struct zergPacket * pcap);
+uint16_t buildIpHeader (struct zergPacket * pcap);
+void fillIpv6 (struct zergPacket * pcap);
+void fillIpv4(struct zergPacket * pcap);
+void buildPcapData(struct zergPacket * pcap);
+void buildPcapPacket(struct zergPacket * pcap);
 void buildEtherFrame (struct zergPacket * pcap);
-void buildIpHeader (struct zergPacket * pcap);
 void buildUdpHeader (struct zergPacket * pcap);
-void buildZergHeader (struct zergPacket *pcap);
+void buildZergHeader (struct zergPacket * pcap);
 FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp);
+
+unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize, char * commandName);
+unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+uint64_t swapLong( uint64_t x);
+unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+int getTypeNum(char * name);
+unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+

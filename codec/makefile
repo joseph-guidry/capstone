@@ -9,7 +9,7 @@ all: decode encode
 decode: decode.c decodelib.a decode.h
 	gcc -Wall -Wextra -Wpedantic -Wwrite-strings -Wstack-usage=1024 -Wfloat-equal -Waggregate-return -Winline -o decode decode.c decodelib.a -lm
 
-encode: encode.c encode.h
+encode: encode.c encodelib.a encode.h
 	gcc -Wall -Wextra -Wpedantic -Wwrite-strings -Wstack-usage=1024 -Wfloat-equal -Waggregate-return -Winline -o encode encode.c encodelib.a -lm
 
 d_debug: decode.c decode.h

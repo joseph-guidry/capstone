@@ -42,6 +42,18 @@ struct ipv4Header {
 	
 };
 
+struct ipv6Header {
+	uint32_t ver_class_flowLabel;
+	uint32_t payloadLen_nxtHdr_HopLimit;
+	uint8_t srcAddress[16];
+	uint8_t destAddress[16];
+};
+
+typedef union {
+	struct ipv4Header ipv4;
+	struct ipv6Header ipv6;
+} ipVersion;
+
 struct udpHeader {
 	uint16_t sport;					//UDP Source Port
 	uint16_t dport;					//UDP Destination Port
@@ -60,7 +72,7 @@ struct zergPacket {
 	struct filepcap fileHeader;				//pcap File Header structure
 	struct headerpcap packetHeader;  		//pcap Packet Header structure
 	struct etherFrame pcapFrame;			//pcap Ethernet Frame
-	struct ipv4Header pcapIpv4;				//pcap IPv4 header
+	ipVersion pcapIp;						//pcap IPv4 header
 	struct udpHeader  pcapUdp;				//pcap UDP header
 	struct zergHeader pcapZerg;				//custom Zerg Packet Header
 };
