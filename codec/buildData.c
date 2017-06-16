@@ -16,6 +16,11 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 	*filesize = ftell(fp);
 	fseek(fp, 0, 0);
 	fread(&filetest, 1, sizeof(struct filepcap),  fp);
+	if ( ntohl(filetest.fileTypeID) == 0xd4c3b2a1);
+	{
+		fprintf(stderr, "%s: Invalid PCAP files\n", filename);
+		exit(1);
+	}
 	pcap->fileHeader = filetest;
 	return fp;
 }

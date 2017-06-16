@@ -13,6 +13,7 @@ int main (int argc, char **argv)
 	}
 	//Fill pcap structure with individual header structures.
 	strcpy(filename, argv[1]);
+	
 	fp = buildPcapData(&pcapfile, filename, &filesize);
 	
 	while((ftell(fp) < filesize) && ((filesize - ftell(fp)) > 60))
