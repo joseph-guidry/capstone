@@ -1,0 +1,6 @@
+*.o
+encode
+decode
+*.a
+*.pcap
+test

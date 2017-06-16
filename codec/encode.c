@@ -60,19 +60,19 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(string, "Message") == 0)
 		{
-			pcapout.pcapZerg.ver_type_totalLen = ntohl((0 << 24) | pcapout.pcapZerg.ver_type_totalLen );
+			pcapout.pcapZerg.ver_type_totalLen = ( (0 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000;
 			//Run Fill MSGPAYLOAD STRUCTURE
 			payloadSize = fillMsgPayload(&pcapout, fp, filesize);
 		} 
 		else if ( strcmp(string, "Latitude") == 0 )
 		{
-			pcapout.pcapZerg.ver_type_totalLen = ntohl((3 << 24) | pcapout.pcapZerg.ver_type_totalLen) ;
+			pcapout.pcapZerg.ver_type_totalLen = ( (3 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000;
 			//Run Fill GPS DATA STRUCTURE
 			payloadSize = fillGpsPayload(&pcapout, fp, filesize);
 		}
 		else if ( strcmp(string, "Name") == 0 )
 		{
-			pcapout.pcapZerg.ver_type_totalLen = ntohl((1 << 24) | pcapout.pcapZerg.ver_type_totalLen);
+			pcapout.pcapZerg.ver_type_totalLen = ( (1 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000;
 			//Run Fill STATUS STRUCTURE
 			payloadSize = fillStatusPayload( &pcapout, fp, filesize);
 		}
