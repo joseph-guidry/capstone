@@ -10,7 +10,6 @@ FILE * printStatusPayload (struct zergPacket * pcapfile, FILE *fp)
 	// Position prior to reading status payload header.
 	fread(&pcap, 1, 12, fp);  
 	msgLength = ((htonl(pcapfile->pcapZerg.ver_type_totalLen) & 0xfffff) - 12);
-	printf("MsgLength: %d\n", msgLength);
 	if (msgLength <= 0)
 	{
 		fprintf(stderr, "No message available\n");

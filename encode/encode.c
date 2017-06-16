@@ -27,8 +27,15 @@ int main(int argc, char **argv)
 	FILE * fp, * foutp;
 	char string[20];
 	unsigned short  ipHeaderLen;
-	unsigned long filesize, payloadSize;
+	unsigned filesize;
+	unsigned long payloadSize;
 	struct zergPacket pcapout;
+	
+	if (argc < 3)
+	{
+		fprintf(stderr, "%s: usage error \n", argv[0]);
+		exit(1);
+	}
 	
 	fp = fopen(argv[1], "r");
 	if (fp == NULL)
@@ -66,7 +73,7 @@ int main(int argc, char **argv)
 
 		//DECISION STRUCTURE FOR FILLING IN PAYLOAD STRUCTURE.
 		fscanf(fp, "%s", string);
-		for (int y = 0; y < strlen(string); y++)
+		for (unsigned int y = 0; y < strlen(string); y++)
 		{
 			if (string[y] == ':')
 			{
@@ -96,10 +103,8 @@ int main(int argc, char **argv)
 		{
 			//printf("MIGHT BE A CMD\n");
 			pcapout.pcapZerg.ver_type_totalLen = ntohl( ((2 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000 );
-			if ( (payloadSize = fillCmdPayload(&pcapout, fp, filesize, string)) < 0)
-			{
-				fprintf(stderr, "Invalid packet\n");
-			}
+			payloadSize = fillCmdPayload(&pcapout, fp, filesize, string);
+			
 		}
 
 		//UPDATE ZERG HEADER LENGTH

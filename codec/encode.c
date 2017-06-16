@@ -1,17 +1,39 @@
 
 #include "encode.h"
 
+unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize);
+unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize, char * command);
+
+uint64_t swapLong( uint64_t x);
+int getTypeNum(char * name);
+uint32_t convertToBinary(int number, float decimal);
+
+void buildPcapData (struct zergPacket * pcap);
+void buildPcapPacket (struct zergPacket * pcap);
+void buildEtherFrame (struct zergPacket * pcap);
+uint16_t buildIpHeader (struct zergPacket * pcap);
+void buildUdpHeader (struct zergPacket * pcap);
+void buildZergHeader (struct zergPacket *pcap);
+FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp);
+
+void fillIpv4(struct zergPacket * pcap);
+void fillIpv6(struct zergPacket * pcap);
+uint16_t buildIpHeader (struct zergPacket * pcap);
+
 int main(int argc, char **argv)
 {
 	FILE * fp, * foutp;
 	char string[20];
 	unsigned short  ipHeaderLen;
-	unsigned int filesize, payloadSize;
+	unsigned filesize;
+	unsigned long payloadSize;
 	struct zergPacket pcapout;
 	
-	if (argc > 3)
+	if (argc < 3)
 	{
-		fprintf(stderr, "%s: usage error %s [filename] [output.pcap]\n", argv[0], argv[0]);
+		fprintf(stderr, "%s: usage error \n", argv[0]);
 		exit(1);
 	}
 	
@@ -79,8 +101,10 @@ int main(int argc, char **argv)
 		}
 		else
 		{
+			//printf("MIGHT BE A CMD\n");
 			pcapout.pcapZerg.ver_type_totalLen = ntohl( ((2 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000 );
 			payloadSize = fillCmdPayload(&pcapout, fp, filesize, string);
+			
 		}
 
 		//UPDATE ZERG HEADER LENGTH

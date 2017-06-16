@@ -157,7 +157,8 @@ unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesi
 			number = getTypeNum(input);
 			if (number == -1)
 			{
-				fprintf(stderr, "wrong type\n");
+				fprintf(stderr, "wrong type: %s %d\n", string, number);
+				continue;
 			}
 			test.maxHitPoints &= 0xffffff00;
 			test.maxHitPoints |= number;
@@ -208,7 +209,7 @@ int getTypeNum(char * name)
 			return 6;
 		case 629:
 			return 7;
-		case 820:
+		case 928:
 			return 8;
 		case 939:
 			return 9;
