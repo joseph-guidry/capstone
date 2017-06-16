@@ -8,7 +8,7 @@ int main (int argc, char **argv)
 	char filename[25];
 	if (argc > 2)
 	{
-		fprintf(stderr, "%s: usage error\n", argv[0]);
+		fprintf(stderr, "%s: usage error < input file >\n", argv[0]);
 		exit(1);
 	}
 	//Fill pcap structure with individual header structures.

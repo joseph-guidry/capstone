@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 	
 	if (argc < 3)
 	{
-		fprintf(stderr, "%s: usage error \n", argv[0]);
+		fprintf(stderr, "%s: usage error : encode < text file >< output pcap>\n", argv[0]);
 		exit(1);
 	}
 	
