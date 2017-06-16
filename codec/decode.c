@@ -43,6 +43,7 @@ int main (int argc, char **argv)
 				break;
 		}
 		//HANDLE PADDING OR BLANK FCS at end of the pcap.
+		
 		fread(filename, 1, 8, fp);
 		for (unsigned int x = 0; x < strlen(filename); x++)
 		{
@@ -53,6 +54,7 @@ int main (int argc, char **argv)
 				break;
 			}
 		}
+		
 	}
 	fclose(fp);
 	return 0;

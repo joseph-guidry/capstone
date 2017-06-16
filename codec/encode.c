@@ -1,27 +1,6 @@
-
 #include "encode.h"
 
-unsigned long fillMsgPayload (struct zergPacket * pcap, FILE * fp, int filesize);
-unsigned long fillStatusPayload (struct zergPacket * pcap, FILE * fp, int filesize);
-unsigned long fillGpsPayload (struct zergPacket * pcap, FILE * fp, int filesize);
-unsigned long fillCmdPayload( struct zergPacket * pcap, FILE * fp, int filesize, char * command);
-
-uint64_t swapLong( uint64_t x);
-int getTypeNum(char * name);
 uint32_t convertToBinary(int number, float decimal);
-
-void buildPcapData (struct zergPacket * pcap);
-void buildPcapPacket (struct zergPacket * pcap);
-void buildEtherFrame (struct zergPacket * pcap);
-uint16_t buildIpHeader (struct zergPacket * pcap);
-void buildUdpHeader (struct zergPacket * pcap);
-void buildZergHeader (struct zergPacket *pcap);
-FILE * updateZergHeader (struct zergPacket * pcap, FILE * fp);
-
-void fillIpv4(struct zergPacket * pcap);
-void fillIpv6(struct zergPacket * pcap);
-uint16_t buildIpHeader (struct zergPacket * pcap);
-
 int main(int argc, char **argv)
 {
 	FILE * fp, * foutp;
@@ -59,7 +38,7 @@ int main(int argc, char **argv)
 	
 	fwrite(&pcapout.fileHeader, 1, sizeof(struct filepcap), foutp);
 	
-	while( ftell(fp) < filesize)
+	while( ftell(fp) + 1 < filesize)
 	{
 	
 		buildPcapPacket(&pcapout);
@@ -70,7 +49,6 @@ int main(int argc, char **argv)
 	
 		//OPEN FILE AND FILL INPUT FROM DATA FILE
 		fp = updateZergHeader(&pcapout, fp);
-
 		//DECISION STRUCTURE FOR FILLING IN PAYLOAD STRUCTURE.
 		fscanf(fp, "%s", string);
 		for (unsigned int y = 0; y < strlen(string); y++)
@@ -80,7 +58,6 @@ int main(int argc, char **argv)
 				string[y] = '\0';
 			}
 		}
-			
 		if (strcmp(string, "Message") == 0)
 		{
 			pcapout.pcapZerg.ver_type_totalLen = ntohl((0 << 24) | pcapout.pcapZerg.ver_type_totalLen );
@@ -101,14 +78,13 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			//printf("MIGHT BE A CMD\n");
-			pcapout.pcapZerg.ver_type_totalLen = ntohl( ((2 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000 );
+			pcapout.pcapZerg.ver_type_totalLen = ( (2 << 24) | pcapout.pcapZerg.ver_type_totalLen) & 0xFF000000;
 			payloadSize = fillCmdPayload(&pcapout, fp, filesize, string);
 			
 		}
 
 		//UPDATE ZERG HEADER LENGTH
-		pcapout.pcapZerg.ver_type_totalLen = ntohl(ntohl(pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
+		pcapout.pcapZerg.ver_type_totalLen = ntohl((pcapout.pcapZerg.ver_type_totalLen) + 12 + payloadSize);
 
 		//UPDATE UDP HEADER LENGTH
 		pcapout.pcapUdp.udpLen = pcapout.pcapUdp.udpLen & 0x0000;
@@ -137,6 +113,7 @@ int main(int argc, char **argv)
 		fwrite(&pcapout.pcapUdp, 1, sizeof(struct udpHeader), foutp);
 		fwrite(&pcapout.pcapZerg, 1, sizeof(struct zergHeader), foutp);
 		fwrite(&pcapout.output.data, 1, payloadSize, foutp);
+		
 	}
 
 	fclose(fp);
