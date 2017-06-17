@@ -21,7 +21,6 @@ FILE * buildPcapData(struct zergPacket * pcap, char *filename, int * filesize)
 		fprintf(stderr, "%s: Invalid PCAP files\n", filename);
 		exit(1);
 	}
-	
 	pcap->fileHeader = filetest;
 	return fp;
 }
@@ -37,10 +36,8 @@ FILE * buildPacketData( struct zergPacket * pcap, FILE *fp )
 	
 	fread(&headertest, 1, sizeof(struct headerpcap),  fp);
 	pcap->packetHeader = headertest;
-	
 	fread(&ethertest, 1, sizeof(struct etherFrame),  fp);
 	pcap->pcapFrame = ethertest;
-	
 	if (htons(ethertest.etherType) == 0x0800)
 	{
 		fread(&iptest, 1, 20,  fp);
@@ -50,12 +47,9 @@ FILE * buildPacketData( struct zergPacket * pcap, FILE *fp )
 		fread(&iptest, 1, 40,  fp);
 	}
 	pcap->pcapIp = iptest;
-
 	fread(&udptest, 1, sizeof(struct udpHeader),  fp);
 	pcap->pcapUdp = udptest;
-	
 	fread(&zergtest, 1, sizeof(struct zergHeader),  fp);
 	pcap->pcapZerg = zergtest;
-	
 	return fp;
 }

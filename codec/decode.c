@@ -13,7 +13,7 @@ int main (int argc, char **argv)
 	}
 	//Fill pcap structure with individual header structures.
 	strcpy(filename, argv[1]);
-	
+	 
 	fp = buildPcapData(&pcapfile, filename, &filesize);
 	
 	while((ftell(fp) < filesize) && ((filesize - ftell(fp)) > 60))
@@ -23,7 +23,6 @@ int main (int argc, char **argv)
 		printf("Sequence: %u \n", htonl(pcapfile.pcapZerg.seqID));
 		printf("From: %u\n", htons(pcapfile.pcapZerg.sourceID));
 		printf("To: %u\n", htons(pcapfile.pcapZerg.destID));
-	
 		msgType = ((htonl(pcapfile.pcapZerg.ver_type_totalLen) >> 24) & 0x0f);
 		switch (msgType)
 		{
@@ -44,18 +43,16 @@ int main (int argc, char **argv)
 				break;
 		}
 		//HANDLE PADDING OR BLANK FCS at end of the pcap.
-		
-		fread(filename, 1, 8, fp);
+		fread(filename, 1, 4, fp);
 		for (unsigned int x = 0; x < strlen(filename); x++)
 		{
 			sum += filename[x];
 			if (sum != 0)
 			{
-				fseek(fp, -8, SEEK_CUR);
+				fseek(fp, -4, SEEK_CUR);
 				break;
 			}
 		}
-		
 	}
 	fclose(fp);
 	return 0;
